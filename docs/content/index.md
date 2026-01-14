@@ -188,54 +188,45 @@ Works with your [favorite cloud providers]{.text-primary}
 Built-in storage plugins handle authentication, chunked uploads, and error handling. Focus on your app, not infrastructure.
 
 #features
-:::u-page-card
+  :::u-page-card
+  ---
+  spotlight: true
+  icon: i-simple-icons-microsoftazure
+  to: /plugins/storage/azure-datalake
+  ---
 
----
+  #title
+  Azure Data Lake
 
-spotlight: true
-icon: i-simple-icons-microsoftazure
-to: /plugins/storage/azure-datalake
+  #description
+  Upload to Azure Data Lake Storage Gen2 with SAS token authentication, automatic retries, and progress tracking.
+  :::
 
----
+  :::u-page-card
+  ---
+  spotlight: true
+  icon: i-simple-icons-amazons3
+  ---
 
-#title
-Azure Data Lake
+  #title
+  Amazon S3
 
-#description
-Upload to Azure Data Lake Storage Gen2 with SAS token authentication, automatic retries, and progress tracking.
-:::
+  #description
+  Coming soon — direct uploads to S3 with presigned URLs and multipart upload support.
+  :::
 
-:::u-page-card
+  :::u-page-card
+  ---
+  spotlight: true
+  icon: i-simple-icons-cloudinary
+  ---
 
----
+  #title
+  Cloudinary
 
-spotlight: true
-icon: i-simple-icons-amazons3
-
----
-
-#title
-Amazon S3
-
-#description
-Coming soon — direct uploads to S3 with presigned URLs and multipart upload support.
-:::
-
-:::u-page-card
-
----
-
-spotlight: true
-icon: i-simple-icons-cloudinary
-
----
-
-#title
-Cloudinary
-
-#description
-Coming soon — upload and transform images with Cloudinary's powerful media API.
-:::
+  #description
+  Coming soon — upload and transform images with Cloudinary's powerful media API.
+  :::
 ::
 
 ::u-page-section
