@@ -64,6 +64,9 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
   // Track created object URLs for automatic cleanup
   const createdObjectURLs = new Map<string, string>() // fileId -> objectURL
 
+  // Track if we've emitted files:uploaded to prevent duplicate emissions
+  let hasEmittedFilesUploaded = false
+
   /**
    * Performance optimization: Create emit functions once per plugin instead of on every hook call.
    *
@@ -323,6 +326,9 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
       // Add file - compression will happen before upload
       files.value.push(fileToAdd)
       emitter.emit("file:added", fileToAdd)
+
+      // Reset files:uploaded flag since we have new files to upload
+      hasEmittedFilesUploaded = false
 
       if (options.autoProceed) {
         upload()
@@ -585,6 +591,9 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     emitter.emit("file:replaced", finalFile as Readonly<UploadFile<TUploadResult>>)
     emitter.emit("file:added", finalFile as Readonly<UploadFile<TUploadResult>>) // For backwards compatibility
 
+    // Reset files:uploaded flag since we have a file that needs re-upload
+    hasEmittedFilesUploaded = false
+
     // Auto-upload if requested (respects autoProceed setting by default)
     const shouldUpload = shouldAutoUpload ?? options.autoProceed
     if (shouldUpload) {
@@ -700,6 +709,14 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
 
     const completed = files.value.filter((f) => f.status === "complete")
     emitter.emit("upload:complete", completed as Array<Required<Readonly<UploadFile<TUploadResult>>>>)
+
+    // Emit files:uploaded when ALL files are complete (no pending, uploading, or error states)
+    // Use hasEmittedFilesUploaded flag to prevent duplicate emissions from concurrent upload() calls
+    const allComplete = files.value.every((f) => f.status === "complete")
+    if (allComplete && files.value.length > 0 && !hasEmittedFilesUploaded) {
+      hasEmittedFilesUploaded = true
+      emitter.emit("files:uploaded", files.value as Array<Readonly<UploadFile<TUploadResult>>>)
+    }
   }
 
   const reset = () => {

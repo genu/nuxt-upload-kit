@@ -298,6 +298,8 @@ type CoreUploaderEvents<TUploadResult = any> = {
   "upload:error": FileError
   "upload:progress": { file: Readonly<UploadFile<TUploadResult>>; progress: number }
   "files:reorder": { oldIndex: number; newIndex: number }
+  /** Emitted when all files have finished uploading (all files have 'complete' status) */
+  "files:uploaded": Array<Readonly<UploadFile<TUploadResult>>>
 }
 
 // Events for listening - only core events are typed, plugins can emit arbitrary events

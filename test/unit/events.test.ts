@@ -341,6 +341,180 @@ describe("Event System", () => {
     })
   })
 
+  describe("files:uploaded event", () => {
+    it("should emit when all files are complete", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
+      uploader.on("files:uploaded", handler)
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+      await uploader.upload()
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "test1.jpg", status: "complete" }),
+          expect.objectContaining({ name: "test2.jpg", status: "complete" }),
+        ]),
+      )
+    })
+
+    it("should not emit if some files have errors", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+      let callCount = 0
+
+      uploader.onUpload(() => {
+        callCount++
+        if (callCount === 2) {
+          return Promise.reject(new Error("Failed"))
+        }
+        return Promise.resolve({ url: "https://example.com/file.jpg" })
+      })
+      uploader.on("files:uploaded", handler)
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+      await uploader.upload()
+
+      // Should not emit because one file has error status
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it("should not emit if no files exist", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
+      uploader.on("files:uploaded", handler)
+
+      await uploader.upload()
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it("should emit again after adding new files and uploading", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
+      uploader.on("files:uploaded", handler)
+
+      // First batch
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.upload()
+      expect(handler).toHaveBeenCalledTimes(1)
+
+      // Add more files and upload again
+      await uploader.addFile(createMockFile("test2.jpg"))
+      await uploader.upload()
+
+      expect(handler).toHaveBeenCalledTimes(2)
+    })
+
+    it("should emit again after replaceFileData and upload", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
+      uploader.on("files:uploaded", handler)
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+      expect(handler).toHaveBeenCalledTimes(1)
+
+      // Replace file data (marks file as needing re-upload)
+      const fileId = uploader.files.value[0].id
+      await uploader.replaceFileData(fileId, new Blob(["new"]), "edited.jpg")
+      await uploader.upload()
+
+      expect(handler).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe("files:uploaded race conditions", () => {
+    it("should only emit once when concurrent upload() calls finish", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      // Create upload function with delay to simulate real upload
+      uploader.onUpload(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        return { url: "https://example.com/file.jpg" }
+      })
+      uploader.on("files:uploaded", handler)
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      // Call upload() multiple times concurrently
+      await Promise.all([uploader.upload(), uploader.upload(), uploader.upload()])
+
+      // Should only emit once despite multiple concurrent calls
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("should handle autoProceed with rapid file additions", async () => {
+      const uploader = useUploadKit({ autoProceed: true })
+      const handler = vi.fn()
+
+      uploader.onUpload(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        return { url: "https://example.com/file.jpg" }
+      })
+      uploader.on("files:uploaded", handler)
+
+      // Add files rapidly - each will trigger upload() via autoProceed
+      await Promise.all([
+        uploader.addFile(createMockFile("test1.jpg")),
+        uploader.addFile(createMockFile("test2.jpg")),
+        uploader.addFile(createMockFile("test3.jpg")),
+      ])
+
+      // Wait for all uploads to complete
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // Should emit exactly once when all files are complete
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ status: "complete" })]))
+    })
+
+    it("should not emit prematurely when one batch finishes but another is still uploading", async () => {
+      const uploader = useUploadKit()
+      const filesUploadedHandler = vi.fn()
+      const uploadCompleteHandler = vi.fn()
+
+      let uploadDelay = 50
+      uploader.onUpload(async () => {
+        const delay = uploadDelay
+        uploadDelay = 10 // Second batch uploads faster
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        return { url: "https://example.com/file.jpg" }
+      })
+      uploader.on("files:uploaded", filesUploadedHandler)
+      uploader.on("upload:complete", uploadCompleteHandler)
+
+      // Add first file and start uploading (slow)
+      await uploader.addFile(createMockFile("slow.jpg"))
+      const firstUpload = uploader.upload()
+
+      // Add second file while first is uploading
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      await uploader.addFile(createMockFile("fast.jpg"))
+      const secondUpload = uploader.upload()
+
+      await Promise.all([firstUpload, secondUpload])
+
+      // upload:complete fires for each batch
+      expect(uploadCompleteHandler).toHaveBeenCalledTimes(2)
+      // files:uploaded should fire once when ALL are done
+      expect(filesUploadedHandler).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe("event handler registration", () => {
     it("should allow multiple handlers for same event", async () => {
       const uploader = useUploadKit()
