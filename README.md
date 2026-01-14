@@ -36,7 +36,7 @@ export default defineNuxtConfig({
 
 ```vue
 <script setup lang="ts">
-const uploader = useUploadManager({
+const uploader = useUploadKit({
   maxFiles: 10,
   maxFileSize: 50 * 1024 * 1024, // 50MB
   allowedFileTypes: ["image/jpeg", "image/png", "video/mp4"],
@@ -94,7 +94,7 @@ const handleUpload = () => uploader.upload()
 ```typescript
 import { PluginAzureDataLake } from "nuxt-upload-kit"
 
-const uploader = useUploadManager({
+const uploader = useUploadKit({
   storage: PluginAzureDataLake({
     sasURL: "https://your-storage.blob.core.windows.net/container?sv=...",
     path: "uploads/images",
@@ -105,16 +105,16 @@ const uploader = useUploadManager({
 
 ## Configuration Options
 
-| Option             | Type                            | Default | Description                        |
-| ------------------ | ------------------------------- | ------- | ---------------------------------- |
-| `storage`          | `StoragePlugin`                 | -       | Storage plugin for file uploads    |
-| `plugins`          | `ProcessingPlugin[]`            | `[]`    | Additional processing plugins      |
-| `maxFiles`         | `number \| false`               | `false` | Maximum number of files            |
-| `maxFileSize`      | `number \| false`               | `false` | Maximum file size in bytes         |
-| `allowedFileTypes` | `string[] \| false`             | `false` | Allowed MIME types                 |
-| `thumbnails`       | `boolean \| ThumbnailOptions`   | `false` | Enable thumbnail generation        |
-| `imageCompression` | `boolean \| CompressionOptions` | `false` | Enable image compression           |
-| `autoProceed`      | `boolean`                       | `false` | Auto-upload after adding files     |
+| Option             | Type                            | Default | Description                     |
+| ------------------ | ------------------------------- | ------- | ------------------------------- |
+| `storage`          | `StoragePlugin`                 | -       | Storage plugin for file uploads |
+| `plugins`          | `ProcessingPlugin[]`            | `[]`    | Additional processing plugins   |
+| `maxFiles`         | `number \| false`               | `false` | Maximum number of files         |
+| `maxFileSize`      | `number \| false`               | `false` | Maximum file size in bytes      |
+| `allowedFileTypes` | `string[] \| false`             | `false` | Allowed MIME types              |
+| `thumbnails`       | `boolean \| ThumbnailOptions`   | `false` | Enable thumbnail generation     |
+| `imageCompression` | `boolean \| CompressionOptions` | `false` | Enable image compression        |
+| `autoProceed`      | `boolean`                       | `false` | Auto-upload after adding files  |
 
 ## Events
 

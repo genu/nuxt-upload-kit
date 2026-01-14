@@ -11,5 +11,8 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": ["Bash(pnpm test:*)"]
   }
 }

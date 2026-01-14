@@ -36,7 +36,7 @@ src/
 └── runtime/
     ├── types/index.ts           # All exported types
     └── composables/
-        ├── useUploadManager/    # Main composable
+        ├── useUploadKit/    # Main composable
         │   ├── index.ts         # Core upload manager logic
         │   ├── types.ts         # Type definitions
         │   ├── validators/      # Validation plugins (max-files, file-types, etc.)
@@ -50,6 +50,7 @@ src/
 ```
 
 **Key Concepts:**
+
 - **Storage Plugins**: Handle file persistence (Azure Data Lake implemented)
 - **Processing Plugins**: Transform files (thumbnails, compression)
 - **Validator Plugins**: Validate files before adding (type, size, count)
@@ -66,6 +67,7 @@ src/
 ## Creating New Plugins
 
 **Validator Plugin Pattern:**
+
 ```typescript
 export const ValidatorExample = defineProcessingPlugin<{ option: string }>((options) => ({
   id: "validator-example",
@@ -79,6 +81,7 @@ export const ValidatorExample = defineProcessingPlugin<{ option: string }>((opti
 ```
 
 **Storage Plugin Pattern:**
+
 ```typescript
 export const PluginStorageExample = (options: Options): StoragePlugin => ({
   id: "storage-example",
@@ -101,6 +104,7 @@ export const PluginStorageExample = (options: Options): StoragePlugin => ({
 ## Documentation Site
 
 The `/docs` folder uses Docus (built on Nuxt Content):
+
 - Content files: `docs/content/` (numbered prefixes for ordering)
 - Custom components: `docs/app/components/`
 - Config: `docs/app.config.ts` (header, socials, theme)
@@ -109,6 +113,7 @@ The `/docs` folder uses Docus (built on Nuxt Content):
 ## Claude Code Skills
 
 Available slash commands for this project:
+
 - `/new-plugin` - Create a new validator, processing, or storage plugin
 - `/new-doc` - Create a new documentation page
 - `/test` - Run tests with guidance on fixing failures

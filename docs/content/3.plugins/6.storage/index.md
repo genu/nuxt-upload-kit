@@ -9,25 +9,25 @@ Storage plugins handle uploading, downloading, and deleting files from remote st
 
 ## Available Providers
 
-| Provider | Plugin | Status |
-|----------|--------|--------|
-| Azure Data Lake | `PluginAzureDataLake` | Available |
-| Amazon S3 | - | Coming soon |
-| Google Cloud Storage | - | Coming soon |
-| Cloudinary | - | Coming soon |
+| Provider             | Plugin                | Status      |
+| -------------------- | --------------------- | ----------- |
+| Azure Data Lake      | `PluginAzureDataLake` | Available   |
+| Amazon S3            | -                     | Coming soon |
+| Google Cloud Storage | -                     | Coming soon |
+| Cloudinary           | -                     | Coming soon |
 
 ## Using Storage Plugins
 
 Configure a storage plugin using the `storage` option:
 
 ```ts
-import { PluginAzureDataLake } from 'nuxt-upload-kit'
+import { PluginAzureDataLake } from "nuxt-upload-kit"
 
-const uploader = useUploadManager({
+const uploader = useUploadKit({
   storage: PluginAzureDataLake({
-    sasURL: 'https://...',
-    path: 'uploads'
-  })
+    sasURL: "https://...",
+    path: "uploads",
+  }),
 })
 ```
 
@@ -40,11 +40,11 @@ Only one storage plugin can be active at a time. The `storage` option takes prec
 If you don't use a storage plugin, implement upload logic with `onUpload`:
 
 ```ts
-const uploader = useUploadManager()
+const uploader = useUploadKit()
 
 uploader.onUpload(async (file, onProgress) => {
   const formData = new FormData()
-  formData.append('file', file.data as Blob)
+  formData.append("file", file.data as Blob)
 
   // Use XMLHttpRequest for progress tracking
   return new Promise((resolve, reject) => {
@@ -60,12 +60,12 @@ uploader.onUpload(async (file, onProgress) => {
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.response))
       } else {
-        reject(new Error('Upload failed'))
+        reject(new Error("Upload failed"))
       }
     }
 
-    xhr.onerror = () => reject(new Error('Network error'))
-    xhr.open('POST', '/api/upload')
+    xhr.onerror = () => reject(new Error("Network error"))
+    xhr.open("POST", "/api/upload")
     xhr.send(formData)
   })
 })

@@ -54,7 +54,7 @@ const defaultOptions: UploadOptions = {
   autoProceed: false,
 }
 
-export const useUploadManager = <TUploadResult = any>(_options: UploadOptions = {}) => {
+export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) => {
   const options = { ...defaultOptions, ..._options } as UploadOptions
   const files = ref<UploadFile<TUploadResult>[]>([])
   // Use any internally to avoid intersection type issues, but provide proper types on the return
@@ -128,9 +128,9 @@ export const useUploadManager = <TUploadResult = any>(_options: UploadOptions = 
       if (isStoragePlugin(plugin)) {
         if (import.meta.dev) {
           console.warn(
-            `[useUploadManager] Storage plugin "${plugin.id}" found in plugins array.\n` +
+            `[useUploadKit] Storage plugin "${plugin.id}" found in plugins array.\n` +
               `This is deprecated. Use the 'storage' option instead:\n\n` +
-              `  useUploadManager({ storage: ${plugin.id}(...) })`,
+              `  useUploadKit({ storage: ${plugin.id}(...) })`,
           )
         }
         return plugin
@@ -146,8 +146,8 @@ export const useUploadManager = <TUploadResult = any>(_options: UploadOptions = 
     if (hasUploadHook) {
       if (import.meta.dev) {
         console.warn(
-          `[useUploadManager] Storage plugin "${plugin.id}" should use the 'storage' option instead of 'plugins':\n\n` +
-            `  useUploadManager({\n` +
+          `[useUploadKit] Storage plugin "${plugin.id}" should use the 'storage' option instead of 'plugins':\n\n` +
+            `  useUploadKit({\n` +
             `    storage: ${plugin.id}({ ... }),  // ✓ Correct\n` +
             `    plugins: [...]                    // Only for validators/processors\n` +
             `  })\n`,
@@ -347,7 +347,9 @@ export const useUploadManager = <TUploadResult = any>(_options: UploadOptions = 
     const results = await Promise.allSettled(newFiles.map((file) => addFile(file)))
 
     // Return successfully added files
-    const addedFiles = results.filter((r): r is PromiseFulfilledResult<UploadFile> => r.status === "fulfilled").map((r) => r.value)
+    const addedFiles = results
+      .filter((r): r is PromiseFulfilledResult<UploadFile> => r.status === "fulfilled")
+      .map((r) => r.value)
 
     return addedFiles
   }

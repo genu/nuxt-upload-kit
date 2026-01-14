@@ -27,6 +27,7 @@ Run the test suite for nuxt-upload-kit.
    - Fix the issue and re-run tests
 
 3. If the user wants to run a specific test file:
+
    ```bash
    pnpm vitest run path/to/test.spec.ts
    ```

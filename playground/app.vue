@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const uploader = useUploadManager({
+const uploader = useUploadKit({
   maxFiles: 5,
   maxFileSize: 10 * 1024 * 1024, // 10MB
   thumbnails: true,

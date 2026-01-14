@@ -450,7 +450,10 @@ export interface Plugin<TUploadResult = any, TPluginEvents extends Record<string
  * }))
  * ```
  */
-export function defineProcessingPlugin<TPluginOptions = unknown, TPluginEvents extends Record<string, any> = Record<string, never>>(
+export function defineProcessingPlugin<
+  TPluginOptions = unknown,
+  TPluginEvents extends Record<string, any> = Record<string, never>,
+>(
   factory: (options: TPluginOptions) => ProcessingPlugin<any, TPluginEvents>,
 ): (options: TPluginOptions) => ProcessingPlugin<any, TPluginEvents> {
   return factory

@@ -10,6 +10,6 @@ onlyBuiltDependencies:
   - sharp
 
 ignoredBuiltDependencies:
-  - '@parcel/watcher'
+  - "@parcel/watcher"
   - esbuild
   - vue-demi

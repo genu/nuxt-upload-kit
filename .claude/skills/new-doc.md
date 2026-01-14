@@ -13,6 +13,7 @@ Create a new documentation page for nuxt-upload-kit.
    - `4.advanced/` - Custom plugins, architecture
 
 3. Use Docus MDC component syntax:
+
    ```markdown
    ::prose-tip
    Helpful information
@@ -22,11 +23,13 @@ Create a new documentation page for nuxt-upload-kit.
    Important warning
    ::
 
-   ::u-page-card
-   ---
+   ## ::u-page-card
+
    icon: i-lucide-icon-name
    to: /link
+
    ---
+
    #title
    Card Title
 
@@ -36,6 +39,7 @@ Create a new documentation page for nuxt-upload-kit.
    ```
 
 4. Include frontmatter:
+
    ```yaml
    ---
    title: Page Title
@@ -47,4 +51,4 @@ Create a new documentation page for nuxt-upload-kit.
 
 5. Follow existing documentation patterns - check similar pages for reference
 
-6. Use code blocks with language hints: ```ts, ```vue, ```bash [Terminal]
+6. Use code blocks with language hints: `ts, `vue, ```bash [Terminal]

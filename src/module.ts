@@ -6,7 +6,7 @@ export type * from "./runtime/types"
 // Module options TypeScript interface definition
 export interface ModuleOptions {
   /**
-   * Enable auto-import of useUploadManager composable
+   * Enable auto-import of useUploadKit composable
    * @default true
    */
   autoImport?: boolean
@@ -24,11 +24,11 @@ export default defineNuxtModule<ModuleOptions>({
     const resolver = createResolver(import.meta.url)
 
     if (options.autoImport) {
-      // Auto-import useUploadManager composable
+      // Auto-import useUploadKit composable
       addImports([
         {
-          name: "useUploadManager",
-          from: resolver.resolve("./runtime/composables/useUploadManager"),
+          name: "useUploadKit",
+          from: resolver.resolve("./runtime/composables/useUploadKit"),
         },
         {
           name: "useFFMpeg",
