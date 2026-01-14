@@ -257,16 +257,16 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
         if (storagePlugin?.hooks.getRemoteFile) {
           // Use storage plugin to get remote file
           const context = createPluginContext(storagePlugin.id, files.value, options, emitter)
-          remoteFileData = await storagePlugin.hooks.getRemoteFile(file.id!, context)
+          remoteFileData = await storagePlugin.hooks.getRemoteFile(file.id, context)
         } else {
           // Fall back to user-provided getRemoteFileFn
-          remoteFileData = await getRemoteFileFn(file.id!)
+          remoteFileData = await getRemoteFileFn(file.id)
         }
 
         const existingFile: RemoteUploadFile = {
           ...file,
-          id: file.id!,
-          name: file.id!,
+          id: file.id,
+          name: file.id,
           data: null,
           status: "complete",
           progress: { percentage: 100 },
@@ -741,7 +741,6 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     }
   }
 
-  // Replace the existing runPluginStage function
   async function runPluginStage(stage: Exclude<PluginLifecycleStage, "upload">, file?: UploadFile) {
     if (!options.plugins) return file
 
@@ -749,29 +748,26 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
 
     for (const plugin of options.plugins) {
       const hook = plugin.hooks[stage]
-      if (hook) {
-        try {
-          // Create context with cached emit function (performance optimization)
-          const context: PluginContext = {
-            files: files.value,
-            options,
-            emit: getPluginEmitFn(plugin.id),
-          }
+      if (!hook) continue
 
-          const result = await callPluginHook(hook, stage, currentFile, context)
-
-          if (!result) continue
-
-          if (currentFile && "id" in result) {
-            currentFile = result as UploadFile
-          }
-        } catch (error) {
-          if (currentFile) {
-            emitter.emit("file:error", { file: currentFile, error: error as FileError })
-          }
-          console.error(`Plugin ${plugin.id} ${stage} hook error:`, error)
-          return null
+      try {
+        const context: PluginContext = {
+          files: files.value,
+          options,
+          emit: getPluginEmitFn(plugin.id),
         }
+
+        const result = await callPluginHook(hook, stage, currentFile, context)
+
+        if (result && currentFile && "id" in result) {
+          currentFile = result
+        }
+      } catch (error) {
+        if (currentFile) {
+          emitter.emit("file:error", { file: currentFile, error: error as FileError })
+        }
+        console.error(`Plugin ${plugin.id} ${stage} hook error:`, error)
+        return null
       }
     }
 
