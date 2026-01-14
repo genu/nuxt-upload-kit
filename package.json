@@ -1,6 +1,6 @@
 {
   "name": "nuxt-upload-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A powerful, plugin-based file upload manager for Nuxt applications",
   "license": "MIT",
   "repository": "https://github.com/genu/nuxt-upload-kit.git",

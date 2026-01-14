@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.1.2
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.1...v0.1.2)
+
+### 🚀 Enhancements
+
+- Update Releases page and navigation links to use internal routing ([af3b96b](https://github.com/genu/nuxt-upload-kit/commit/af3b96b))
+
+### 🏡 Chore
+
+- Lint/format ([0960f22](https://github.com/genu/nuxt-upload-kit/commit/0960f22))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.1
 
 
