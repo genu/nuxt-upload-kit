@@ -10,8 +10,7 @@ const links = [
   },
   {
     label: "Releases",
-    to: "https://github.com/genu/nuxt-upload-kit/releases",
-    target: "_blank",
+    to: "/releases",
   },
 ]
 
@@ -25,8 +24,7 @@ const nav = computed(() => [
   {
     title: "Releases",
     icon: "i-lucide-rocket",
-    path: "https://github.com/genu/nuxt-upload-kit/releases",
-    target: "_blank",
+    path: "/releases",
   },
 ])
 </script>

@@ -7,6 +7,9 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: "vercel",
+    prerender: {
+      routes: ["/releases"],
+    },
   },
 
   compatibilityDate: "2025-01-14",
