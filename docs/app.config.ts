@@ -16,10 +16,6 @@ export default defineAppConfig({
   },
   header: {
     title: "Nuxt Upload Kit",
-    logo: {
-      light: "/logo.png",
-      dark: "/logo-dark.png",
-    },
   },
   socials: {
     github: "https://github.com/genu/nuxt-upload-kit",
