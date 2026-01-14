@@ -1,6 +1,10 @@
-# Nuxt Upload Kit
+<p align="center">
+  <img src="docs/public/logo.png" alt="Nuxt Upload Kit" width="300" />
+</p>
 
-A powerful, plugin-based file upload manager for Nuxt applications.
+<h1 align="center">Nuxt Upload Kit</h1>
+
+<p align="center">A powerful, plugin-based file upload manager for Nuxt applications.</p>
 
 ## Features
 
