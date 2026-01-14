@@ -3,5 +3,9 @@ export default defineNuxtConfig({
     name: "Nuxt Upload Kit",
   },
 
+  nitro: {
+    preset: "vercel",
+  },
+
   compatibilityDate: "2025-01-14",
 })

@@ -21,6 +21,10 @@
     "nuxt-ui-remote": {
       "type": "http",
       "url": "https://ui.nuxt.com/mcp"
+    },
+    "vercel-remote": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
     }
   }
 }
