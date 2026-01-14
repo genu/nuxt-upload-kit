@@ -35,7 +35,8 @@
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
+    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit",
+    "docs:dev": "nuxt dev docs --extends docus"
   },
   "dependencies": {
     "@nuxt/kit": "^4.2.2",
@@ -55,7 +56,7 @@
     "changelogen": "^0.6.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-prettier": "5.5.4",
+    "eslint-plugin-prettier": "5.5.5",
     "nuxt": "^4.2.2",
     "prettier": "^3.7.4",
     "typescript": "~5.9.3",

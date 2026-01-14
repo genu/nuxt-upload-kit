@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "docus-remote": {
+      "type": "http",
+      "url": "https://docs.example.com/mcp"
+    },
+    "nuxt-remote": {
+      "type": "http",
+      "url": "https://nuxt.com/mcp"
+    },
+    "nuxt-ui-remote": {
+      "type": "http",
+      "url": "https://ui.nuxt.com/mcp"
+    }
+  }
+}

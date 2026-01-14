@@ -33,3 +33,6 @@ playground/node_modules
 .env
 .env.*
 !.env.example
+
+# Claude Code local settings (user-specific permissions)
+.claude/settings.local.json
