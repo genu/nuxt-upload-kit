@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Logs
+*.log
+
+# Nuxt dev/build outputs
+.nuxt
+.output
+dist
+.data
+.nitro
+.cache
+
+# IDE
+.idea
+.vscode
+
+# System
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+*.lcov
+
+# Playground
+playground/.nuxt
+playground/.output
+playground/node_modules
+
+# Local env files
+.env
+.env.*
+!.env.example

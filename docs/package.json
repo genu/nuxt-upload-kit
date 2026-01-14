@@ -1,0 +1,16 @@
+{
+  "name": "nuxt-upload-kit-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --extends docus",
+    "build": "nuxt build --extends docus",
+    "generate": "nuxt generate --extends docus",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.5.0",
+    "docus": "latest",
+    "nuxt": "^4.2.2"
+  }
+}
