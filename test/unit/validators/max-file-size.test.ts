@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { ValidatorMaxFileSize } from "../../../src/runtime/composables/useUploadKit/validators/max-file-size"
 import { createMockLocalUploadFile, createMockPluginContext } from "../../helpers"
 

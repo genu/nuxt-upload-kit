@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { PluginImageCompressor } from "../../../src/runtime/composables/useUploadKit/plugins/image-compressor"
-import { createMockLocalUploadFile, createMockRemoteUploadFile, createMockPluginContext, createMockBlob } from "../../helpers"
+import { createMockLocalUploadFile, createMockRemoteUploadFile, createMockPluginContext } from "../../helpers"
 
 describe("PluginImageCompressor", () => {
   let originalCreateObjectURL: typeof URL.createObjectURL

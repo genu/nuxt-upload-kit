@@ -12,7 +12,7 @@ export const PluginThumbnailGenerator = defineProcessingPlugin<ThumbnailGenerato
   return {
     id: "thumbnail-generator",
     hooks: {
-      preprocess: async (file, context) => {
+      preprocess: async (file, _context) => {
         const { maxWidth = 200, maxHeight = 200, quality = 0.7, videoCaptureTime = 1 } = pluginOptions
 
         // Skip non-image and non-video files

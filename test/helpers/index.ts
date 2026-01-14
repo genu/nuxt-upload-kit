@@ -92,7 +92,7 @@ export function mockCreateObjectURL(): { mock: ReturnType<typeof vi.fn>; cleanup
   const originalCreateObjectURL = URL.createObjectURL
   const originalRevokeObjectURL = URL.revokeObjectURL
 
-  const createMock = vi.fn((blob: Blob) => `blob:mock-${Math.random().toString(36).slice(2)}`)
+  const createMock = vi.fn((_blob: Blob) => `blob:mock-${Math.random().toString(36).slice(2)}`)
   const revokeMock = vi.fn()
 
   URL.createObjectURL = createMock
@@ -145,7 +145,7 @@ export function mockCanvasContext() {
   const mockCanvas = {
     getContext: vi.fn(() => mockContext),
     toDataURL: vi.fn(() => "data:image/jpeg;base64,mockdata"),
-    toBlob: vi.fn((callback: BlobCallback, type?: string, quality?: number) => {
+    toBlob: vi.fn((callback: BlobCallback, type?: string, _quality?: number) => {
       const blob = new Blob(["mock"], { type: type || "image/jpeg" })
       callback(blob)
     }),
@@ -167,7 +167,7 @@ export function mockCanvasContext() {
 /**
  * Create multiple mock files with different properties
  */
-export function createMockFiles(count: number, baseOptions: Partial<File> = {}): File[] {
+export function createMockFiles(count: number, _baseOptions: Partial<File> = {}): File[] {
   return Array.from({ length: count }, (_, i) =>
     createMockFile(`test-file-${i + 1}.jpg`, 1024 * (i + 1), "image/jpeg", Date.now() - i * 1000),
   )

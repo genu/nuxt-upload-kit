@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { createMockLocalUploadFile, createMockPluginContext, createMockBlob } from "../../helpers"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createMockPluginContext } from "../../helpers"
+import { PluginAzureDataLake } from "../../../src/runtime/composables/useUploadKit/plugins/storage/azure-datalake"
 
-// Mock the Azure SDK before importing the plugin
+// Mock the Azure SDK - vitest hoists vi.mock calls automatically
 vi.mock("@azure/storage-file-datalake", () => ({
   DataLakeDirectoryClient: vi.fn().mockImplementation((sasUrl: string) => {
     const mockFileClient = {
@@ -28,9 +29,6 @@ vi.mock("@azure/storage-file-datalake", () => ({
     }
   }),
 }))
-
-// Import after mocking
-import { PluginAzureDataLake } from "../../../src/runtime/composables/useUploadKit/plugins/storage/azure-datalake"
 
 describe("PluginAzureDataLake", () => {
   beforeEach(() => {

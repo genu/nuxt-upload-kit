@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import { ValidatorDuplicateFile } from "../../../src/runtime/composables/useUploadKit/validators/duplicate-file"
 import { createMockLocalUploadFile, createMockPluginContext, createMockFile } from "../../helpers"
 

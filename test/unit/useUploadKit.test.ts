@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { createMockFile, createMockLocalUploadFile, createMockRemoteUploadFile, wait } from "../helpers"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createMockFile, wait } from "../helpers"
 
 // Mock Vue's onBeforeUnmount since we're not in a component context
 vi.mock("vue", async () => {
@@ -397,7 +397,7 @@ describe("useUploadKit", () => {
   describe("totalProgress", () => {
     it("should calculate total progress correctly", async () => {
       const uploader = useUploadKit()
-      let progressCallbacks: ((p: number) => void)[] = []
+      const progressCallbacks: ((p: number) => void)[] = []
 
       uploader.onUpload(async (file, onProgress) => {
         progressCallbacks.push(onProgress)

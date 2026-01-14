@@ -1,6 +1,5 @@
 import type { UploadFile } from "../types"
 import { defineProcessingPlugin } from "../types"
-import { calculateThumbnailDimensions } from "../utils"
 
 /**
  * Events emitted by the image compressor plugin

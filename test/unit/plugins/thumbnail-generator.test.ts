@@ -254,7 +254,7 @@ describe("PluginThumbnailGenerator", () => {
       const maxHeight = 200
 
       const aspectRatio = originalWidth / originalHeight // 8
-      let scaledWidth = maxWidth
+      const scaledWidth = maxWidth
       let scaledHeight = maxHeight
 
       if (aspectRatio > 1) {

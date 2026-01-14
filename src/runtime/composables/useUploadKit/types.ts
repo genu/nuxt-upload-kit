@@ -402,7 +402,7 @@ export type PluginHooks<TUploadResult = any, TPluginEvents extends Record<string
  *
  * These plugins transform or validate files without handling storage.
  */
-export interface ProcessingPlugin<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> {
+export interface ProcessingPlugin<_TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> {
   id: string
   hooks: ProcessingPluginHooks<TPluginEvents>
   options?: UploadOptions

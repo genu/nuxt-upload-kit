@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { createMockFile, wait } from "../helpers"
+import { createMockFile } from "../helpers"
 
 // Mock Vue's onBeforeUnmount
 vi.mock("vue", async () => {

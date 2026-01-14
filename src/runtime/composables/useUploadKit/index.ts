@@ -232,7 +232,6 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
    *               onProgress(50); // 50% progress
    *               return "https://example.com/uploaded-file-url"; // Return the upload URL
    *             }
-   * @returns void
    */
   const onUpload = (fn: UploadFn<TUploadResult>) => {
     uploadFn = fn
