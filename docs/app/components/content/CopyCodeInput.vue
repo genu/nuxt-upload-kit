@@ -20,21 +20,15 @@ function copy() {
     :model-value="props.source"
     aria-label="Copy code to get started"
     size="xl"
-    class="min-w-80"
+    class="flex-1"
     disabled
     :ui="{ base: 'disabled:cursor-default' }"
   >
     <template #leading>
       <UIcon name="i-lucide-terminal" />
     </template>
-    <template
-      v-if="props.source?.length"
-      #trailing
-    >
-      <UTooltip
-        text="Copy to clipboard"
-        :content="{ side: 'right' }"
-      >
+    <template v-if="props.source?.length" #trailing>
+      <UTooltip text="Copy to clipboard" :content="{ side: 'right' }">
         <UButton
           :color="copied ? 'success' : 'neutral'"
           variant="link"
