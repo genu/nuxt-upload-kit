@@ -1,0 +1,635 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { createMockFile, createMockLocalUploadFile, createMockRemoteUploadFile, wait } from "../helpers"
+
+// Mock Vue's onBeforeUnmount since we're not in a component context
+vi.mock("vue", async () => {
+  const actual = await vi.importActual("vue")
+  return {
+    ...actual,
+    onBeforeUnmount: vi.fn(),
+  }
+})
+
+describe("useUploadKit", () => {
+  // Import dynamically to ensure fresh module state for each test
+  let useUploadKit: typeof import("../../src/runtime/composables/useUploadKit").useUploadKit
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    // Re-import to get fresh module state
+    const module = await import("../../src/runtime/composables/useUploadKit")
+    useUploadKit = module.useUploadKit
+  })
+
+  describe("initialization", () => {
+    it("should initialize with default options", () => {
+      const uploader = useUploadKit()
+
+      expect(uploader.files.value).toEqual([])
+      expect(uploader.totalProgress.value).toBe(0)
+      expect(uploader.status.value).toBe("waiting")
+    })
+
+    it("should initialize with custom options", () => {
+      const uploader = useUploadKit({
+        maxFiles: 5,
+        maxFileSize: 1024 * 1024,
+        allowedFileTypes: ["image/jpeg", "image/png"],
+        autoProceed: true,
+      })
+
+      expect(uploader.files.value).toEqual([])
+    })
+  })
+
+  describe("addFile", () => {
+    it("should add a valid file successfully", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.jpg", 1024, "image/jpeg")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0].name).toBe("test.jpg")
+      expect(uploader.files.value[0].size).toBe(1024)
+      expect(uploader.files.value[0].mimeType).toBe("image/jpeg")
+      expect(uploader.files.value[0].status).toBe("waiting")
+    })
+
+    it("should generate unique IDs for files", async () => {
+      const uploader = useUploadKit()
+      const file1 = createMockFile("test1.jpg")
+      const file2 = createMockFile("test2.jpg")
+
+      await uploader.addFile(file1)
+      await uploader.addFile(file2)
+
+      expect(uploader.files.value[0].id).not.toBe(uploader.files.value[1].id)
+    })
+
+    it("should preserve file extension in ID", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.png", 1024, "image/png")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value[0].id).toMatch(/\.png$/)
+    })
+
+    it("should throw error for files without extension", async () => {
+      const uploader = useUploadKit()
+      const content = new Uint8Array(1024).fill(65)
+      const blob = new Blob([content], { type: "image/jpeg" })
+      const file = new File([blob], "noextension", { type: "image/jpeg" })
+
+      await expect(uploader.addFile(file)).rejects.toThrow("Invalid file name")
+    })
+
+    it("should emit file:added event when file is added", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.jpg")
+      const handler = vi.fn()
+
+      uploader.on("file:added", handler)
+      await uploader.addFile(file)
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ name: "test.jpg" }))
+    })
+  })
+
+  describe("addFiles", () => {
+    it("should add multiple files at once", async () => {
+      const uploader = useUploadKit()
+      const files = [createMockFile("test1.jpg"), createMockFile("test2.jpg"), createMockFile("test3.jpg")]
+
+      const added = await uploader.addFiles(files)
+
+      expect(added).toHaveLength(3)
+      expect(uploader.files.value).toHaveLength(3)
+    })
+
+    it("should continue adding files even if some fail validation", async () => {
+      const uploader = useUploadKit({
+        maxFileSize: 500,
+      })
+
+      const files = [
+        createMockFile("small.jpg", 100),
+        createMockFile("large.jpg", 1000), // Should fail
+        createMockFile("small2.jpg", 200),
+      ]
+
+      const added = await uploader.addFiles(files)
+
+      expect(added).toHaveLength(2)
+      // Files with errors are also added but with error status
+      expect(uploader.files.value).toHaveLength(3)
+    })
+  })
+
+  describe("removeFile", () => {
+    it("should remove a file by ID", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.jpg")
+
+      await uploader.addFile(file)
+      const fileId = uploader.files.value[0].id
+
+      await uploader.removeFile(fileId)
+
+      expect(uploader.files.value).toHaveLength(0)
+    })
+
+    it("should emit file:removed event", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.jpg")
+      const handler = vi.fn()
+
+      await uploader.addFile(file)
+      const fileId = uploader.files.value[0].id
+
+      uploader.on("file:removed", handler)
+      await uploader.removeFile(fileId)
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ name: "test.jpg" }))
+    })
+
+    it("should do nothing if file ID does not exist", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("test.jpg")
+
+      await uploader.addFile(file)
+      await uploader.removeFile("non-existent-id")
+
+      expect(uploader.files.value).toHaveLength(1)
+    })
+  })
+
+  describe("removeFiles", () => {
+    it("should remove multiple files by IDs", async () => {
+      const uploader = useUploadKit()
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+      await uploader.addFile(createMockFile("test3.jpg"))
+
+      const idsToRemove = [uploader.files.value[0].id, uploader.files.value[2].id]
+      uploader.removeFiles(idsToRemove)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0].name).toBe("test2.jpg")
+    })
+
+    it("should emit file:removed for each removed file", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      uploader.on("file:removed", handler)
+      uploader.removeFiles([uploader.files.value[0].id, uploader.files.value[1].id])
+
+      expect(handler).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe("clearFiles", () => {
+    it("should remove all files", async () => {
+      const uploader = useUploadKit()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      const cleared = uploader.clearFiles()
+
+      expect(uploader.files.value).toHaveLength(0)
+      expect(cleared).toHaveLength(2)
+    })
+
+    it("should emit file:removed for each cleared file", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      uploader.on("file:removed", handler)
+      uploader.clearFiles()
+
+      expect(handler).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe("getFile", () => {
+    it("should return file by ID", async () => {
+      const uploader = useUploadKit()
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      const file = uploader.getFile(uploader.files.value[0].id)
+
+      expect(file.name).toBe("test.jpg")
+    })
+
+    it("should throw error if file not found", async () => {
+      const uploader = useUploadKit()
+
+      expect(() => uploader.getFile("non-existent")).toThrow("File not found: non-existent")
+    })
+  })
+
+  describe("reorderFile", () => {
+    it("should reorder files correctly", async () => {
+      const uploader = useUploadKit()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+      await uploader.addFile(createMockFile("test3.jpg"))
+
+      uploader.reorderFile(0, 2)
+
+      expect(uploader.files.value[0].name).toBe("test2.jpg")
+      expect(uploader.files.value[1].name).toBe("test3.jpg")
+      expect(uploader.files.value[2].name).toBe("test1.jpg")
+    })
+
+    it("should emit files:reorder event", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      uploader.on("files:reorder", handler)
+      uploader.reorderFile(0, 1)
+
+      expect(handler).toHaveBeenCalledWith({ oldIndex: 0, newIndex: 1 })
+    })
+
+    it("should not reorder if indices are the same", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      uploader.on("files:reorder", handler)
+      uploader.reorderFile(0, 0)
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it("should not reorder if indices are out of bounds", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+
+      uploader.on("files:reorder", handler)
+      uploader.reorderFile(-1, 5)
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("updateFile", () => {
+    it("should update file properties", async () => {
+      const uploader = useUploadKit()
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      const fileId = uploader.files.value[0].id
+      uploader.updateFile(fileId, { status: "uploading", progress: { percentage: 50 } })
+
+      expect(uploader.files.value[0].status).toBe("uploading")
+      expect(uploader.files.value[0].progress.percentage).toBe(50)
+    })
+  })
+
+  describe("upload", () => {
+    it("should upload files with custom upload function", async () => {
+      const uploader = useUploadKit()
+      const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+
+      uploader.onUpload(uploadFn)
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+
+      expect(uploadFn).toHaveBeenCalledTimes(1)
+      expect(uploader.files.value[0].status).toBe("complete")
+    })
+
+    it("should emit upload:start and upload:complete events", async () => {
+      const uploader = useUploadKit()
+      const startHandler = vi.fn()
+      const completeHandler = vi.fn()
+
+      uploader.onUpload(vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" }))
+      uploader.on("upload:start", startHandler)
+      uploader.on("upload:complete", completeHandler)
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+
+      expect(startHandler).toHaveBeenCalledTimes(1)
+      expect(completeHandler).toHaveBeenCalledTimes(1)
+    })
+
+    it("should only upload files with 'waiting' status", async () => {
+      const uploader = useUploadKit()
+      const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+
+      uploader.onUpload(uploadFn)
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload() // First upload
+      await uploader.upload() // Second upload - should not upload again
+
+      expect(uploadFn).toHaveBeenCalledTimes(1)
+    })
+
+    it("should handle upload errors gracefully", async () => {
+      const uploader = useUploadKit()
+      const errorHandler = vi.fn()
+      const uploadError = new Error("Upload failed")
+
+      uploader.onUpload(vi.fn().mockRejectedValue(uploadError))
+      uploader.on("file:error", errorHandler)
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+
+      expect(errorHandler).toHaveBeenCalledTimes(1)
+      expect(uploader.files.value[0].status).toBe("error")
+      expect(uploader.files.value[0].error?.message).toBe("Upload failed")
+    })
+
+    it("should call progress callback during upload", async () => {
+      const uploader = useUploadKit()
+      const progressHandler = vi.fn()
+
+      uploader.onUpload(async (file, onProgress) => {
+        onProgress(25)
+        onProgress(50)
+        onProgress(75)
+        onProgress(100)
+        return { url: "https://example.com/file.jpg" }
+      })
+
+      uploader.on("upload:progress", progressHandler)
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+
+      expect(progressHandler).toHaveBeenCalledTimes(4)
+    })
+
+    it("should throw error if no upload function configured", async () => {
+      const uploader = useUploadKit()
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      await uploader.upload()
+
+      expect(uploader.files.value[0].status).toBe("error")
+      expect(uploader.files.value[0].error?.message).toContain("No uploader configured")
+    })
+  })
+
+  describe("totalProgress", () => {
+    it("should calculate total progress correctly", async () => {
+      const uploader = useUploadKit()
+      let progressCallbacks: ((p: number) => void)[] = []
+
+      uploader.onUpload(async (file, onProgress) => {
+        progressCallbacks.push(onProgress)
+        return { url: "https://example.com/file.jpg" }
+      })
+
+      await uploader.addFile(createMockFile("test1.jpg"))
+      await uploader.addFile(createMockFile("test2.jpg"))
+
+      expect(uploader.totalProgress.value).toBe(0)
+    })
+
+    it("should return 0 when no files", () => {
+      const uploader = useUploadKit()
+
+      expect(uploader.totalProgress.value).toBe(0)
+    })
+  })
+
+  describe("reset", () => {
+    it("should clear all files and state", async () => {
+      const uploader = useUploadKit()
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      uploader.reset()
+
+      expect(uploader.files.value).toHaveLength(0)
+    })
+  })
+
+  describe("getFileData", () => {
+    it("should return blob data for local files", async () => {
+      const uploader = useUploadKit()
+      const mockFile = createMockFile("test.jpg", 1024, "image/jpeg")
+
+      await uploader.addFile(mockFile)
+      const fileId = uploader.files.value[0].id
+
+      const blob = await uploader.getFileData(fileId)
+
+      expect(blob).toBeInstanceOf(Blob)
+    })
+
+    it("should throw error for non-existent file", async () => {
+      const uploader = useUploadKit()
+
+      await expect(uploader.getFileData("non-existent")).rejects.toThrow("File not found")
+    })
+  })
+
+  describe("getFileURL", () => {
+    it("should create object URL for local files", async () => {
+      const uploader = useUploadKit()
+      const mockFile = createMockFile("test.jpg")
+
+      await uploader.addFile(mockFile)
+      const fileId = uploader.files.value[0].id
+
+      const url = await uploader.getFileURL(fileId)
+
+      expect(url).toMatch(/^blob:/)
+    })
+
+    it("should reuse existing object URL", async () => {
+      const uploader = useUploadKit()
+      const mockFile = createMockFile("test.jpg")
+
+      await uploader.addFile(mockFile)
+      const fileId = uploader.files.value[0].id
+
+      const url1 = await uploader.getFileURL(fileId)
+      const url2 = await uploader.getFileURL(fileId)
+
+      expect(url1).toBe(url2)
+    })
+  })
+
+  describe("replaceFileData", () => {
+    it("should replace file data with new blob", async () => {
+      const uploader = useUploadKit()
+      const originalFile = createMockFile("test.jpg", 1000, "image/jpeg")
+
+      await uploader.addFile(originalFile)
+      const fileId = uploader.files.value[0].id
+
+      const newBlob = new Blob([new Uint8Array(500).fill(66)], { type: "image/jpeg" })
+      await uploader.replaceFileData(fileId, newBlob, "new-test.jpg")
+
+      expect(uploader.files.value[0].name).toBe("new-test.jpg")
+      expect(uploader.files.value[0].size).toBe(500)
+      expect(uploader.files.value[0].status).toBe("waiting")
+    })
+
+    it("should emit file:replaced event", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+      const originalFile = createMockFile("test.jpg")
+
+      await uploader.addFile(originalFile)
+      const fileId = uploader.files.value[0].id
+
+      uploader.on("file:replaced", handler)
+      await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("should auto-upload if autoProceed is enabled and shouldAutoUpload is undefined", async () => {
+      const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+      const uploader = useUploadKit({ autoProceed: true })
+      uploader.onUpload(uploadFn)
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      // Clear calls from initial add (autoProceed triggers upload)
+      await wait(10)
+      uploadFn.mockClear()
+
+      const fileId = uploader.files.value[0].id
+      await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
+      await wait(10)
+
+      expect(uploadFn).toHaveBeenCalled()
+    })
+  })
+
+  describe("initializeExistingFiles", () => {
+    it("should initialize files from remote storage", async () => {
+      const uploader = useUploadKit()
+
+      uploader.onGetRemoteFile(async (fileId) => ({
+        size: 2048,
+        mimeType: "image/png",
+        remoteUrl: `https://storage.example.com/${fileId}`,
+      }))
+
+      await uploader.initializeExistingFiles([{ id: "remote-1.png" }, { id: "remote-2.png" }])
+
+      expect(uploader.files.value).toHaveLength(2)
+      expect(uploader.files.value[0].source).toBe("storage")
+      expect(uploader.files.value[0].status).toBe("complete")
+      expect(uploader.files.value[0].remoteUrl).toBe("https://storage.example.com/remote-1.png")
+    })
+
+    it("should skip files without ID", async () => {
+      const uploader = useUploadKit()
+
+      uploader.onGetRemoteFile(async (fileId) => ({
+        size: 2048,
+        mimeType: "image/png",
+        remoteUrl: `https://storage.example.com/${fileId}`,
+      }))
+
+      await uploader.initializeExistingFiles([
+        { id: "valid.png" },
+        { id: "" }, // Empty ID
+        {}, // No ID
+      ])
+
+      expect(uploader.files.value).toHaveLength(1)
+    })
+  })
+
+  describe("event system", () => {
+    it("should allow registering and receiving events", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.on("file:added", handler)
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      expect(handler).toHaveBeenCalled()
+    })
+
+    it("should pass correct payload to event handlers", async () => {
+      const uploader = useUploadKit()
+      const handler = vi.fn()
+
+      uploader.on("file:added", handler)
+      await uploader.addFile(createMockFile("test.jpg", 1234, "image/jpeg"))
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "test.jpg",
+          size: 1234,
+          mimeType: "image/jpeg",
+        }),
+      )
+    })
+  })
+
+  describe("addPlugin", () => {
+    it("should allow adding plugins dynamically", async () => {
+      const uploader = useUploadKit()
+      const validateFn = vi.fn().mockImplementation((file) => file)
+
+      uploader.addPlugin({
+        id: "custom-plugin",
+        hooks: {
+          validate: validateFn,
+        },
+      })
+
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      expect(validateFn).toHaveBeenCalled()
+    })
+  })
+
+  describe("autoProceed option", () => {
+    it("should auto-upload when autoProceed is true", async () => {
+      const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+      const uploader = useUploadKit({ autoProceed: true })
+
+      uploader.onUpload(uploadFn)
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      // Wait for auto-upload to trigger
+      await wait(10)
+
+      expect(uploadFn).toHaveBeenCalled()
+    })
+
+    it("should not auto-upload when autoProceed is false", async () => {
+      const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+      const uploader = useUploadKit({ autoProceed: false })
+
+      uploader.onUpload(uploadFn)
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      await wait(10)
+
+      expect(uploadFn).not.toHaveBeenCalled()
+    })
+  })
+})
