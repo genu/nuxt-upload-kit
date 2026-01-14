@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.3
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.2...v0.1.3)
+
+### 🚀 Enhancements
+
+- Add types, plugins, and validators export ([c77387f](https://github.com/genu/nuxt-upload-kit/commit/c77387f))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.2
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.1...v0.1.2)
