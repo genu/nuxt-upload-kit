@@ -1,6 +1,6 @@
 import { ref } from "vue"
 import { DataLakeDirectoryClient, type PathHttpHeaders } from "@azure/storage-file-datalake"
-import { defineStoragePlugin } from "../../types"
+import { defineStorageAdapter } from "../../types"
 
 export interface AzureDataLakeOptions {
   /**
@@ -65,7 +65,7 @@ export interface AzureUploadResult {
   blobPath: string
 }
 
-export const PluginAzureDataLake = defineStoragePlugin<AzureDataLakeOptions, AzureUploadResult>((options) => {
+export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, AzureUploadResult>((options) => {
   const sasURL = ref(options.sasURL || "")
   let refreshPromise: Promise<string> | null = null
 

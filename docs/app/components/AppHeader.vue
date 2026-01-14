@@ -6,7 +6,7 @@ const navigation = inject<Ref<ContentNavigationItem[]>>("navigation")
 const links = [
   {
     label: "Documentation",
-    to: "/get-started/installation",
+    to: "/get-started/overview",
   },
   {
     label: "Releases",
@@ -18,7 +18,7 @@ const nav = computed(() => [
   {
     title: "Documentation",
     icon: "i-lucide-book-open",
-    path: "/get-started/installation",
+    path: "/get-started/overview",
     children: navigation!.value,
   },
   {

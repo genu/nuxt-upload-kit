@@ -6,6 +6,9 @@
 
 <p align="center">A powerful, plugin-based file upload manager for Nuxt applications.</p>
 
+> [!WARNING]
+> This module is experimental and under active development. The API may change between versions without notice. Use in production at your own risk.
+
 ## Features
 
 - 🔌 **Plugin System** - Extensible architecture with built-in plugins for validation, compression, and storage

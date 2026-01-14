@@ -462,13 +462,13 @@ export function defineProcessingPlugin<
 }
 
 /**
- * Define a storage plugin (Azure, S3, GCS, etc.)
+ * Define a storage adapter (Azure, S3, GCS, etc.)
  *
- * Storage plugins MUST implement the `upload` hook and should return an object with a `url` property.
+ * Storage adapters MUST implement the `upload` hook and should return an object with a `url` property.
  *
  * @example Azure Storage
  * ```typescript
- * export const PluginAzureDataLake = defineStoragePlugin<AzureOptions, AzureEvents>((options) => ({
+ * export const PluginAzureDataLake = defineStorageAdapter<AzureOptions, AzureEvents>((options) => ({
  *   id: 'azure-datalake-storage',
  *   hooks: {
  *     upload: async (file, context) => {
@@ -486,7 +486,7 @@ export function defineProcessingPlugin<
  * }))
  * ```
  */
-export function defineStoragePlugin<
+export function defineStorageAdapter<
   TPluginOptions = unknown,
   TUploadResult = any,
   TPluginEvents extends Record<string, any> = Record<string, never>,
@@ -495,6 +495,11 @@ export function defineStoragePlugin<
 ): (options: TPluginOptions) => StoragePlugin<TUploadResult, TPluginEvents> {
   return factory
 }
+
+/**
+ * @deprecated Use `defineStorageAdapter` instead
+ */
+export const defineStoragePlugin = defineStorageAdapter
 
 /**
  * Define an uploader plugin with type safety, context access, and custom events.

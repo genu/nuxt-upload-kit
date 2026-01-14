@@ -16,7 +16,7 @@ Powerful File Uploads for your [Nuxt Apps]{.text-primary}
 A composable-first file upload manager with built-in validation, image compression, thumbnail generation, and cloud storage support. Production-ready in minutes.
 
 #links
-:u-button{icon="i-lucide-rocket" size="xl" to="/get-started/installation" label="Get Started"}
+:u-button{icon="i-lucide-rocket" size="xl" to="/get-started/overview" label="Get Started"}
 
 :copy-code-input{source="npx nuxi module add nuxt-upload-kit"}
 
@@ -50,11 +50,11 @@ Everything you need for [file uploads]{.text-primary}
   spotlight: true
   spotlight-color: primary
   icon: i-lucide-cloud-upload
-  to: /plugins/storage
+  to: /storage-adapters
   ---
 
   #title
-  Cloud Storage
+  Storage Adapters
 
   #description
   Azure Data Lake Storage built-in. Upload directly to the cloud with SAS token authentication and automatic retry logic.
@@ -173,7 +173,7 @@ uploader.onUpload(async (file, onProgress) => {
 Works with your [favorite cloud providers]{.text-primary}
 
 #description
-Built-in storage plugins handle authentication, chunked uploads, and error handling. Focus on your app, not infrastructure.
+Built-in storage adapters handle authentication, chunked uploads, and error handling. Focus on your app, not infrastructure.
 
 #features
   :::u-page-card
@@ -181,7 +181,7 @@ Built-in storage plugins handle authentication, chunked uploads, and error handl
   spotlight: true
   spotlight-color: primary
   icon: i-simple-icons-microsoftazure
-  to: /plugins/storage/azure-datalake
+  to: /storage-adapters/azure-datalake
   ---
 
   #title
