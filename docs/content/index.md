@@ -4,7 +4,7 @@ seo:
   description: A powerful, plugin-based file upload manager for Nuxt applications with validation, image compression, thumbnail generation, and cloud storage.
 ---
 
-::u-page-hero
+::u-page-hero{.hero-gradient}
 ---
 orientation: horizontal
 ---
@@ -25,121 +25,109 @@ A composable-first file upload manager with built-in validation, image compressi
 ![Nuxt Upload Kit](/logo-dark.png){.hidden .w-full .max-w-md .mx-auto .lg:mx-0 .dark:block}
 ::
 
-::u-page-section
+::u-page-section{.bg-gradient-to-b .from-transparent .to-elevated/50}
 #title
 Everything you need for [file uploads]{.text-primary}
 
 #features
-:::u-page-card
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-puzzle
+  to: /plugins/overview
+  ---
 
----
+  #title
+  Plugin Architecture
 
-spotlight: true
-icon: i-lucide-puzzle
-to: /plugins/overview
+  #description
+  Extensible plugin system for validation, processing, and storage. Add only what you need, create custom plugins with ease.
+  :::
 
----
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-cloud-upload
+  to: /plugins/storage
+  ---
 
-#title
-Plugin Architecture
+  #title
+  Cloud Storage
 
-#description
-Extensible plugin system for validation, processing, and storage. Add only what you need, create custom plugins with ease.
-:::
+  #description
+  Azure Data Lake Storage built-in. Upload directly to the cloud with SAS token authentication and automatic retry logic.
+  :::
 
-:::u-page-card
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-image
+  to: /plugins/image-compressor
+  ---
 
----
+  #title
+  Image Compression
 
-spotlight: true
-icon: i-lucide-cloud-upload
-to: /plugins/storage
+  #description
+  Compress images in the browser before upload. Reduce file sizes by up to 80% while maintaining visual quality.
+  :::
 
----
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-film
+  to: /plugins/video-compressor
+  ---
 
-#title
-Cloud Storage
+  #title
+  Video Compression
 
-#description
-Azure Data Lake Storage built-in. Upload directly to the cloud with SAS token authentication and automatic retry logic.
-:::
+  #description
+  FFmpeg-powered video transcoding in the browser. Resize, re-encode, and optimize videos before they hit your server.
+  :::
 
-:::u-page-card
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-shield-check
+  to: /plugins/validators
+  ---
 
----
+  #title
+  Built-in Validation
 
-spotlight: true
-icon: i-lucide-image
-to: /plugins/image-compressor
+  #description
+  Validate file type, size, count, and duplicates out of the box. Configurable limits with clear error messages.
+  :::
 
----
+  :::u-page-card
+  ---
+  spotlight: true
+  spotlight-color: primary
+  icon: i-lucide-activity
+  to: /usage/events
+  ---
 
-#title
-Image Compression
+  #title
+  Event System
 
-#description
-Compress images in the browser before upload. Reduce file sizes by up to 80% while maintaining visual quality.
-:::
-
-:::u-page-card
-
----
-
-spotlight: true
-icon: i-lucide-film
-to: /plugins/video-compressor
-
----
-
-#title
-Video Compression
-
-#description
-FFmpeg-powered video transcoding in the browser. Resize, re-encode, and optimize videos before they hit your server.
-:::
-
-:::u-page-card
-
----
-
-spotlight: true
-icon: i-lucide-shield-check
-to: /plugins/validators
-
----
-
-#title
-Built-in Validation
-
-#description
-Validate file type, size, count, and duplicates out of the box. Configurable limits with clear error messages.
-:::
-
-:::u-page-card
-
----
-
-spotlight: true
-icon: i-lucide-activity
-to: /usage/events
-
----
-
-#title
-Event System
-
-#description
-Real-time progress tracking with a comprehensive event system. Hook into every stage of the upload lifecycle.
-:::
+  #description
+  Real-time progress tracking with a comprehensive event system. Hook into every stage of the upload lifecycle.
+  :::
 ::
 
-::u-page-section
+::u-page-section{.bg-elevated/50}
 ---
 orientation: horizontal
 ---
 
 #title
-Simple, [composable-first]{.text-primary} API
+Simple [API]{.text-primary}
 
 #description
 Get up and running with just a few lines of code. The `useUploadKit` composable handles file state, validation, processing, and uploads — all reactively.
@@ -177,10 +165,10 @@ uploader.onUpload(async (file, onProgress) => {
 ```
 
 #links
-:u-button{icon="i-lucide-book-open" size="xl" to="/usage/use-upload-manager" label="Read the docs"}
+:u-button{icon="i-lucide-book-open" size="xl" to="/usage/use-upload-kit" label="Read the docs"}
 ::
 
-::u-page-section
+::u-page-section{.bg-gradient-to-b .from-elevated/50 .to-transparent}
 #title
 Works with your [favorite cloud providers]{.text-primary}
 
@@ -191,6 +179,7 @@ Built-in storage plugins handle authentication, chunked uploads, and error handl
   :::u-page-card
   ---
   spotlight: true
+  spotlight-color: primary
   icon: i-simple-icons-microsoftazure
   to: /plugins/storage/azure-datalake
   ---
@@ -205,6 +194,7 @@ Built-in storage plugins handle authentication, chunked uploads, and error handl
   :::u-page-card
   ---
   spotlight: true
+  spotlight-color: neutral
   icon: i-simple-icons-amazons3
   ---
 
@@ -218,6 +208,7 @@ Built-in storage plugins handle authentication, chunked uploads, and error handl
   :::u-page-card
   ---
   spotlight: true
+  spotlight-color: neutral
   icon: i-simple-icons-cloudinary
   ---
 
@@ -229,7 +220,7 @@ Built-in storage plugins handle authentication, chunked uploads, and error handl
   :::
 ::
 
-::u-page-section
+::u-page-section{.bg-elevated/50}
 ---
 orientation: horizontal
 reverse: true
