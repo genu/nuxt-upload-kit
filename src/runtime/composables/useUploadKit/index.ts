@@ -51,7 +51,7 @@ const defaultOptions: UploadOptions = {
   maxFiles: false,
   thumbnails: false,
   imageCompression: false,
-  autoProceed: false,
+  autoUpload: false,
 }
 
 export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) => {
@@ -330,7 +330,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
       // Reset files:uploaded flag since we have new files to upload
       hasEmittedFilesUploaded = false
 
-      if (options.autoProceed) {
+      if (options.autoUpload) {
         upload()
       }
 
@@ -538,11 +538,11 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
    * @param fileId - The ID of the file to replace
    * @param newData - The new file data (Blob or File)
    * @param newName - Optional new filename
-   * @param shouldAutoUpload - Whether to auto-upload after replacing (defaults to autoProceed setting)
+   * @param shouldAutoUpload - Whether to auto-upload after replacing (defaults to autoUpload setting)
    *
    * @example
    * ```typescript
-   * // After user crops an image - auto-upload if autoProceed is enabled
+   * // After user crops an image - auto-upload if autoUpload is enabled
    * const croppedBlob = await cropImage(originalBlob)
    * await replaceFileData(file.id, croppedBlob, 'cropped-image.jpg')
    * ```
@@ -594,8 +594,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     // Reset files:uploaded flag since we have a file that needs re-upload
     hasEmittedFilesUploaded = false
 
-    // Auto-upload if requested (respects autoProceed setting by default)
-    const shouldUpload = shouldAutoUpload ?? options.autoProceed
+    // Auto-upload if requested (respects autoUpload setting by default)
+    const shouldUpload = shouldAutoUpload ?? options.autoUpload
     if (shouldUpload) {
       upload()
     }

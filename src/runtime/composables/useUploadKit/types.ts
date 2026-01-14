@@ -268,7 +268,7 @@ export interface UploadOptions {
    * Automatically start upload after files are added
    * @default false
    */
-  autoProceed?: boolean
+  autoUpload?: boolean
 }
 
 export interface ThumbnailOptions {

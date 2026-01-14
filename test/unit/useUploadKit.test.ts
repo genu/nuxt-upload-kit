@@ -36,7 +36,7 @@ describe("useUploadKit", () => {
         maxFiles: 5,
         maxFileSize: 1024 * 1024,
         allowedFileTypes: ["image/jpeg", "image/png"],
-        autoProceed: true,
+        autoUpload: true,
       })
 
       expect(uploader.files.value).toEqual([])
@@ -505,13 +505,13 @@ describe("useUploadKit", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("should auto-upload if autoProceed is enabled and shouldAutoUpload is undefined", async () => {
+    it("should auto-upload if autoUpload is enabled and shouldAutoUpload is undefined", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoProceed: true })
+      const uploader = useUploadKit({ autoUpload: true })
       uploader.onUpload(uploadFn)
 
       await uploader.addFile(createMockFile("test.jpg"))
-      // Clear calls from initial add (autoProceed triggers upload)
+      // Clear calls from initial add (autoUpload triggers upload)
       await wait(10)
       uploadFn.mockClear()
 
@@ -606,10 +606,10 @@ describe("useUploadKit", () => {
     })
   })
 
-  describe("autoProceed option", () => {
-    it("should auto-upload when autoProceed is true", async () => {
+  describe("autoUpload option", () => {
+    it("should auto-upload when autoUpload is true", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoProceed: true })
+      const uploader = useUploadKit({ autoUpload: true })
 
       uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))
@@ -620,9 +620,9 @@ describe("useUploadKit", () => {
       expect(uploadFn).toHaveBeenCalled()
     })
 
-    it("should not auto-upload when autoProceed is false", async () => {
+    it("should not auto-upload when autoUpload is false", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoProceed: false })
+      const uploader = useUploadKit({ autoUpload: false })
 
       uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))

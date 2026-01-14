@@ -118,7 +118,7 @@ const uploader = useUploadKit({
 | `allowedFileTypes` | `string[] \| false`             | `false` | Allowed MIME types              |
 | `thumbnails`       | `boolean \| ThumbnailOptions`   | `false` | Enable thumbnail generation     |
 | `imageCompression` | `boolean \| CompressionOptions` | `false` | Enable image compression        |
-| `autoProceed`      | `boolean`                       | `false` | Auto-upload after adding files  |
+| `autoUpload`      | `boolean`                       | `false` | Auto-upload after adding files  |
 
 ## Events
 

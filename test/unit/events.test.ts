@@ -457,8 +457,8 @@ describe("Event System", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
-    it("should handle autoProceed with rapid file additions", async () => {
-      const uploader = useUploadKit({ autoProceed: true })
+    it("should handle autoUpload with rapid file additions", async () => {
+      const uploader = useUploadKit({ autoUpload: true })
       const handler = vi.fn()
 
       uploader.onUpload(async () => {
@@ -467,7 +467,7 @@ describe("Event System", () => {
       })
       uploader.on("files:uploaded", handler)
 
-      // Add files rapidly - each will trigger upload() via autoProceed
+      // Add files rapidly - each will trigger upload() via autoUpload
       await Promise.all([
         uploader.addFile(createMockFile("test1.jpg")),
         uploader.addFile(createMockFile("test2.jpg")),
