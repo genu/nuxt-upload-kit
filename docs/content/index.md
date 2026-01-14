@@ -4,9 +4,10 @@ seo:
   description: A powerful, plugin-based file upload manager for Nuxt applications with validation, image compression, thumbnail generation, and cloud storage.
 ---
 
-## ::u-page-hero
-
-## orientation: horizontal
+::u-page-hero
+---
+orientation: horizontal
+---
 
 #title
 Powerful File Uploads for your [Nuxt Apps]{.text-primary}
@@ -15,21 +16,13 @@ Powerful File Uploads for your [Nuxt Apps]{.text-primary}
 A composable-first file upload manager with built-in validation, image compression, thumbnail generation, and cloud storage support. Production-ready in minutes.
 
 #links
-:::u-button
+:u-button{icon="i-lucide-rocket" size="xl" to="/get-started/installation" label="Get Started"}
 
----
+:copy-code-input{source="npx nuxi module add nuxt-upload-kit"}
 
-icon: i-lucide-rocket
-size: xl
-to: /get-started/installation
-
----
-
-Get Started
-:::
-
-:::copy-code-input{source="npx nuxi module add nuxt-upload-kit"}
-:::
+#default
+![Nuxt Upload Kit](/logo.png){.w-full .max-w-md .mx-auto .lg:mx-0 .dark:hidden}
+![Nuxt Upload Kit](/logo-dark.png){.hidden .w-full .max-w-md .mx-auto .lg:mx-0 .dark:block}
 ::
 
 ::u-page-section
@@ -140,9 +133,10 @@ Real-time progress tracking with a comprehensive event system. Hook into every s
 :::
 ::
 
-## ::u-page-section
-
-## orientation: horizontal
+::u-page-section
+---
+orientation: horizontal
+---
 
 #title
 Simple, [composable-first]{.text-primary} API
@@ -183,18 +177,7 @@ uploader.onUpload(async (file, onProgress) => {
 ```
 
 #links
-:::u-button
-
----
-
-icon: i-lucide-book-open
-size: xl
-to: /usage/use-upload-manager
-
----
-
-Read the docs
-:::
+:u-button{icon="i-lucide-book-open" size="xl" to="/usage/use-upload-manager" label="Read the docs"}
 ::
 
 ::u-page-section
@@ -255,11 +238,10 @@ Coming soon — upload and transform images with Cloudinary's powerful media API
 :::
 ::
 
-## ::u-page-section
-
+::u-page-section
+---
 orientation: horizontal
 reverse: true
-
 ---
 
 #title
@@ -295,16 +277,5 @@ export const MyCustomPlugin = definePlugin((options) => ({
 ```
 
 #links
-:::u-button
-
----
-
-icon: i-lucide-code
-size: xl
-to: /advanced/custom-plugins
-
----
-
-Build a plugin
-:::
+:u-button{icon="i-lucide-code" size="xl" to="/advanced/custom-plugins" label="Build a plugin"}
 ::
