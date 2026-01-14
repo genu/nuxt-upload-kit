@@ -3,6 +3,8 @@ export default defineNuxtConfig({
     name: "Nuxt Upload Kit",
   },
 
+  css: ["~/assets/css/main.css"],
+
   nitro: {
     preset: "vercel",
   },
