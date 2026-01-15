@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { createMockFile } from "../helpers"
+import { createMockFile } from "../../helpers"
 
 // Mock Vue's onBeforeUnmount
 vi.mock("vue", async () => {
@@ -10,15 +10,15 @@ vi.mock("vue", async () => {
   }
 })
 
-describe("Event System", () => {
+describe("events", () => {
   // Import dynamically to ensure fresh module state for each test
-  let useUploadKit: typeof import("../../src/runtime/composables/useUploadKit").useUploadKit
+  let useUploadKit: typeof import("../../../src/runtime/composables/useUploadKit").useUploadKit
 
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.resetModules()
     // Re-import to get fresh module state
-    const module = await import("../../src/runtime/composables/useUploadKit")
+    const module = await import("../../../src/runtime/composables/useUploadKit")
     useUploadKit = module.useUploadKit
   })
 
