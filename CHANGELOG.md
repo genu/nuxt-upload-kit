@@ -1,6 +1,27 @@
 # Changelog
 
 
+## v0.1.8
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.7...v0.1.8)
+
+### 🚀 Enhancements
+
+- **docs:** Update navigation and titles for events and plugins sections ([e8d5230](https://github.com/genu/nuxt-upload-kit/commit/e8d5230))
+- Add Cloudflare R2 and Firebase Storage providers for file uploads ([79f3b8a](https://github.com/genu/nuxt-upload-kit/commit/79f3b8a))
+
+### 💅 Refactors
+
+- **docs:** Streamline file lifecycle guide by removing redundant sections ([64aba23](https://github.com/genu/nuxt-upload-kit/commit/64aba23))
+
+### 🏡 Chore
+
+- Re-organize event tests ([b643bb9](https://github.com/genu/nuxt-upload-kit/commit/b643bb9))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.7
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.6...v0.1.7)
