@@ -9,6 +9,10 @@ const links = [
     to: "/get-started/overview",
   },
   {
+    label: "Storage Adapters",
+    to: "/storage-adapters/overview",
+  },
+  {
     label: "Releases",
     to: "/releases",
   },
