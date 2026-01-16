@@ -8,9 +8,5 @@ export default defineBuildConfig({
     name: `providers/${name}`,
     declaration: true,
   })),
-  externals: [
-    // Mark provider-specific dependencies as external
-    "@azure/storage-file-datalake",
-    "firebase/storage",
-  ],
+  externals: ["@azure/storage-file-datalake", "firebase/storage"],
 })

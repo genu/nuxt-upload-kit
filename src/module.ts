@@ -47,11 +47,5 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Add #upload-kit alias for types and runtime
     _nuxt.options.alias["#upload-kit"] = resolver.resolve("./runtime")
-
-    // Add provider aliases for convenience within Nuxt apps
-    const providers = ["aws-s3", "cloudflare-r2", "azure-datalake", "firebase"]
-    for (const provider of providers) {
-      _nuxt.options.alias[`#upload-kit/providers/${provider}`] = resolver.resolve(`./providers/${provider}`)
-    }
   },
 })
