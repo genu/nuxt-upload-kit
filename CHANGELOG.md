@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.10
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.9...v0.1.10)
+
+### 🏡 Chore
+
+- Add alias for providers ([c00fa29](https://github.com/genu/nuxt-upload-kit/commit/c00fa29))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.9
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.7...v0.1.9)
