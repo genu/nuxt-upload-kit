@@ -1,6 +1,39 @@
 # Changelog
 
 
+## v0.1.9
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.7...v0.1.9)
+
+### 🚀 Enhancements
+
+- **docs:** Update navigation and titles for events and plugins sections ([e8d5230](https://github.com/genu/nuxt-upload-kit/commit/e8d5230))
+- Add Cloudflare R2 and Firebase Storage providers for file uploads ([79f3b8a](https://github.com/genu/nuxt-upload-kit/commit/79f3b8a))
+
+### 🩹 Fixes
+
+- Export providers separately ([91a71f6](https://github.com/genu/nuxt-upload-kit/commit/91a71f6))
+
+### 💅 Refactors
+
+- **docs:** Streamline file lifecycle guide by removing redundant sections ([64aba23](https://github.com/genu/nuxt-upload-kit/commit/64aba23))
+
+### 📖 Documentation
+
+- Add Storage Adapters link to navigation ([a2c367c](https://github.com/genu/nuxt-upload-kit/commit/a2c367c))
+- Add contributing guide ([ca64334](https://github.com/genu/nuxt-upload-kit/commit/ca64334))
+
+### 🏡 Chore
+
+- Re-organize event tests ([b643bb9](https://github.com/genu/nuxt-upload-kit/commit/b643bb9))
+- **release:** V0.1.8 ([ff69d34](https://github.com/genu/nuxt-upload-kit/commit/ff69d34))
+- Add issue templates for bug reports and feature requests ([b97016d](https://github.com/genu/nuxt-upload-kit/commit/b97016d))
+- Add MIT License file ([55b0a0b](https://github.com/genu/nuxt-upload-kit/commit/55b0a0b))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.8
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.7...v0.1.8)
