@@ -1,30 +1,20 @@
 /**
  * Storage Adapter Plugins
  *
- * These plugins handle the actual upload, download, and deletion of files
- * to/from various cloud storage providers.
+ * All storage adapters are now imported from dedicated entry points:
  *
- * Only ONE storage plugin should be active per uploader instance.
- * If you need multiple storage destinations, create multiple uploader instances.
+ * ```typescript
+ * import { PluginAWSS3 } from "nuxt-upload-kit/providers/aws-s3"
+ * import { PluginCloudflareR2 } from "nuxt-upload-kit/providers/cloudflare-r2"
+ * import { PluginAzureDataLake } from "nuxt-upload-kit/providers/azure-datalake"
+ * import { PluginFirebaseStorage } from "nuxt-upload-kit/providers/firebase"
+ * ```
+ *
+ * This prevents bundling unused provider code and external SDK dependencies.
  */
 
-// Azure Data Lake Storage
-export { PluginAzureDataLake, type AzureDataLakeOptions, type AzureUploadResult } from "./azure-datalake"
-
-/**
- * AWS S3 Storage Adapter (also works with S3-compatible services: MinIO, DigitalOcean Spaces, Wasabi, Backblaze B2)
- * @experimental This adapter is experimental and may change in future releases.
- */
-export { PluginAWSS3, type AWSS3Options, type AWSS3UploadResult } from "./aws-s3"
-
-/**
- * Cloudflare R2 Storage Adapter
- * @experimental This adapter is experimental and may change in future releases.
- */
-export { PluginCloudflareR2, type CloudflareR2Options, type CloudflareR2UploadResult } from "./cloudflare-r2"
-
-/**
- * Firebase Storage Adapter
- * @experimental This adapter is experimental and may change in future releases.
- */
-export { PluginFirebaseStorage, type FirebaseStorageOptions, type FirebaseStorageUploadResult } from "./firebase-storage"
+// Re-export types only (no runtime code) for backwards compatibility
+export type { AWSS3Options, AWSS3UploadResult } from "./aws-s3"
+export type { CloudflareR2Options, CloudflareR2UploadResult } from "./cloudflare-r2"
+export type { AzureDataLakeOptions, AzureUploadResult } from "./azure-datalake"
+export type { FirebaseStorageOptions, FirebaseStorageUploadResult } from "./firebase-storage"

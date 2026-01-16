@@ -20,6 +20,22 @@
     ".": {
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
+    },
+    "./providers/aws-s3": {
+      "types": "./dist/providers/aws-s3.d.mts",
+      "import": "./dist/providers/aws-s3.mjs"
+    },
+    "./providers/cloudflare-r2": {
+      "types": "./dist/providers/cloudflare-r2.d.mts",
+      "import": "./dist/providers/cloudflare-r2.mjs"
+    },
+    "./providers/azure-datalake": {
+      "types": "./dist/providers/azure-datalake.d.mts",
+      "import": "./dist/providers/azure-datalake.mjs"
+    },
+    "./providers/firebase": {
+      "types": "./dist/providers/firebase.d.mts",
+      "import": "./dist/providers/firebase.mjs"
     }
   },
   "scripts": {
@@ -43,8 +59,8 @@
     "mitt": "^3.0.1"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.969.0",
-    "@aws-sdk/lib-storage": "^3.969.0",
+    "@aws-sdk/client-s3": "^3.970.0",
+    "@aws-sdk/lib-storage": "^3.970.0",
     "@azure/storage-file-datalake": "^12.28.1",
     "@ffmpeg/ffmpeg": "0.12.15",
     "@ffmpeg/util": "0.12.2",
@@ -60,11 +76,12 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
-    "firebase": "^12.7.0",
-    "happy-dom": "^20.2.0",
+    "firebase": "^12.8.0",
+    "happy-dom": "^20.3.1",
     "nuxt": "^4.2.2",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.0",
     "typescript": "~5.9.3",
+    "unbuild": "^3.6.1",
     "vitest": "^4.0.17",
     "vue": "^3.5.26",
     "vue-tsc": "^3.2.2"
@@ -72,7 +89,8 @@
   "peerDependencies": {
     "@azure/storage-file-datalake": "^12.0.0",
     "@ffmpeg/ffmpeg": "^0.12.0",
-    "@ffmpeg/util": "^0.12.0"
+    "@ffmpeg/util": "^0.12.0",
+    "firebase": "^10.0.0 || ^11.0.0 || ^12.0.0"
   },
   "peerDependenciesMeta": {
     "@azure/storage-file-datalake": {
@@ -82,6 +100,9 @@
       "optional": true
     },
     "@ffmpeg/util": {
+      "optional": true
+    },
+    "firebase": {
       "optional": true
     }
   },
