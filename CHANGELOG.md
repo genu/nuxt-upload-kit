@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.11
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.10...v0.1.11)
+
+### 💅 Refactors
+
+- Simplify externals declaration and remove provider aliases ([267d9e6](https://github.com/genu/nuxt-upload-kit/commit/267d9e6))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.10
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.9...v0.1.10)
