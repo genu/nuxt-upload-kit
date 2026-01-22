@@ -23,6 +23,19 @@ describe("useUploadKit", () => {
     useUploadKit = module.useUploadKit
   })
 
+  /**
+   * Helper to wait for upload:complete event (event-based, more deterministic than wait())
+   */
+  const waitForUploadComplete = (uploader: ReturnType<typeof useUploadKit>, timeout = 1000) => {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Timeout waiting for upload:complete")), timeout)
+      uploader.on("upload:complete", () => {
+        clearTimeout(timer)
+        resolve()
+      })
+    })
+  }
+
   describe("initialization", () => {
     it("should initialize with default options", () => {
       const uploader = useUploadKit()
@@ -511,14 +524,17 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit({ autoUpload: true })
       uploader.onUpload(uploadFn)
 
+      // Set up listener before action that triggers upload
+      const firstUpload = waitForUploadComplete(uploader)
       await uploader.addFile(createMockFile("test.jpg"))
-      // Clear calls from initial add (autoUpload triggers upload)
-      await wait(10)
+      await firstUpload
       uploadFn.mockClear()
 
+      // Set up listener before replaceFileData triggers another upload
+      const secondUpload = waitForUploadComplete(uploader)
       const fileId = uploader.files.value[0]!.id
       await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
-      await wait(10)
+      await secondUpload
 
       expect(uploadFn).toHaveBeenCalled()
     })
@@ -613,10 +629,9 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit({ autoUpload: true })
 
       uploader.onUpload(uploadFn)
+      const uploadComplete = waitForUploadComplete(uploader)
       await uploader.addFile(createMockFile("test.jpg"))
-
-      // Wait for auto-upload to trigger
-      await wait(10)
+      await uploadComplete
 
       expect(uploadFn).toHaveBeenCalled()
     })
@@ -628,6 +643,7 @@ describe("useUploadKit", () => {
       uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))
 
+      // No event to wait for - upload should NOT happen (negative test)
       await wait(10)
 
       expect(uploadFn).not.toHaveBeenCalled()
@@ -649,6 +665,30 @@ describe("useUploadKit", () => {
           })),
       },
     })
+
+    /**
+     * Helper to wait for initialFiles to load (event-based, more deterministic than wait())
+     */
+    const waitForInitialFiles = (
+      uploader: ReturnType<typeof useUploadKit>,
+      options: { expectError?: boolean; timeout?: number } = {},
+    ) => {
+      const { expectError = false, timeout = 1000 } = options
+      return new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("Timeout waiting for initialFiles")), timeout)
+        if (expectError) {
+          uploader.on("initialFiles:error", () => {
+            clearTimeout(timer)
+            resolve()
+          })
+        } else {
+          uploader.on("initialFiles:loaded", () => {
+            clearTimeout(timer)
+            resolve()
+          })
+        }
+      })
+    }
 
     it("should be ready immediately when no initialFiles provided", () => {
       const uploader = useUploadKit()
@@ -675,8 +715,7 @@ describe("useUploadKit", () => {
         })),
       })
 
-      // Wait for async initialization
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(2)
@@ -690,7 +729,7 @@ describe("useUploadKit", () => {
         storage: createMockStoragePlugin(),
       })
 
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(1)
@@ -710,7 +749,7 @@ describe("useUploadKit", () => {
 
       // Set the ref value
       filesRef.value = ["deferred-file.jpg"]
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(1)
@@ -725,7 +764,7 @@ describe("useUploadKit", () => {
       })
 
       uploader.on("initialFiles:loaded", loadedHandler)
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(loadedHandler).toHaveBeenCalledTimes(1)
       expect(loadedHandler).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: "file1.jpg" })]))
@@ -741,7 +780,7 @@ describe("useUploadKit", () => {
       })
 
       uploader.on("initialFiles:error", errorHandler)
-      await wait(50)
+      await waitForInitialFiles(uploader, { expectError: true })
 
       expect(errorHandler).toHaveBeenCalledTimes(1)
       expect(uploader.isReady.value).toBe(true) // Should still be ready so UI isn't stuck
@@ -762,13 +801,13 @@ describe("useUploadKit", () => {
 
       // Set initial value after setup
       filesRef.value = ["file1.jpg"]
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(uploader.files.value).toHaveLength(1)
 
-      // Change the ref - should NOT re-initialize
+      // Change the ref - should NOT re-initialize (no event fires, use wait)
       filesRef.value = ["file2.jpg", "file3.jpg"]
-      await wait(50)
+      await wait(10)
 
       // Should still have only the original file
       expect(uploader.files.value).toHaveLength(1)
@@ -781,6 +820,7 @@ describe("useUploadKit", () => {
         initialFiles: [],
       })
 
+      // No event fires for empty array - isReady is set synchronously
       await wait(10)
 
       expect(uploader.isReady.value).toBe(true)
@@ -811,7 +851,7 @@ describe("useUploadKit", () => {
         },
       })
 
-      await wait(50)
+      await waitForInitialFiles(uploader)
 
       expect(uploader.files.value).toHaveLength(2)
 
