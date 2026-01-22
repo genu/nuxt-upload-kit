@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.1.12
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.11...v0.1.12)
+
+### 🚀 Enhancements
+
+- Add initialFiles option to pre-populate uploader with existing files ([ba707ee](https://github.com/genu/nuxt-upload-kit/commit/ba707ee))
+
+### 🏡 Chore
+
+- Update dependencies ([499f934](https://github.com/genu/nuxt-upload-kit/commit/499f934))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.11
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.10...v0.1.11)
