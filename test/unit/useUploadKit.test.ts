@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { ref } from "vue"
 import { createMockFile, wait } from "../helpers"
 
 // Mock Vue's onBeforeUnmount since we're not in a component context
@@ -51,10 +52,10 @@ describe("useUploadKit", () => {
       await uploader.addFile(file)
 
       expect(uploader.files.value).toHaveLength(1)
-      expect(uploader.files.value[0].name).toBe("test.jpg")
-      expect(uploader.files.value[0].size).toBe(1024)
-      expect(uploader.files.value[0].mimeType).toBe("image/jpeg")
-      expect(uploader.files.value[0].status).toBe("waiting")
+      expect(uploader.files.value[0]!.name).toBe("test.jpg")
+      expect(uploader.files.value[0]!.size).toBe(1024)
+      expect(uploader.files.value[0]!.mimeType).toBe("image/jpeg")
+      expect(uploader.files.value[0]!.status).toBe("waiting")
     })
 
     it("should generate unique IDs for files", async () => {
@@ -65,7 +66,7 @@ describe("useUploadKit", () => {
       await uploader.addFile(file1)
       await uploader.addFile(file2)
 
-      expect(uploader.files.value[0].id).not.toBe(uploader.files.value[1].id)
+      expect(uploader.files.value[0]!.id).not.toBe(uploader.files.value[1]!.id)
     })
 
     it("should preserve file extension in ID", async () => {
@@ -74,7 +75,7 @@ describe("useUploadKit", () => {
 
       await uploader.addFile(file)
 
-      expect(uploader.files.value[0].id).toMatch(/\.png$/)
+      expect(uploader.files.value[0]!.id).toMatch(/\.png$/)
     })
 
     it("should throw error for files without extension", async () => {
@@ -135,7 +136,7 @@ describe("useUploadKit", () => {
       const file = createMockFile("test.jpg")
 
       await uploader.addFile(file)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       await uploader.removeFile(fileId)
 
@@ -148,7 +149,7 @@ describe("useUploadKit", () => {
       const handler = vi.fn()
 
       await uploader.addFile(file)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       uploader.on("file:removed", handler)
       await uploader.removeFile(fileId)
@@ -175,11 +176,11 @@ describe("useUploadKit", () => {
       await uploader.addFile(createMockFile("test2.jpg"))
       await uploader.addFile(createMockFile("test3.jpg"))
 
-      const idsToRemove = [uploader.files.value[0].id, uploader.files.value[2].id]
+      const idsToRemove = [uploader.files.value[0]!.id, uploader.files.value[2]!.id]
       uploader.removeFiles(idsToRemove)
 
       expect(uploader.files.value).toHaveLength(1)
-      expect(uploader.files.value[0].name).toBe("test2.jpg")
+      expect(uploader.files.value[0]!.name).toBe("test2.jpg")
     })
 
     it("should emit file:removed for each removed file", async () => {
@@ -190,7 +191,7 @@ describe("useUploadKit", () => {
       await uploader.addFile(createMockFile("test2.jpg"))
 
       uploader.on("file:removed", handler)
-      uploader.removeFiles([uploader.files.value[0].id, uploader.files.value[1].id])
+      uploader.removeFiles([uploader.files.value[0]!.id, uploader.files.value[1]!.id])
 
       expect(handler).toHaveBeenCalledTimes(2)
     })
@@ -228,7 +229,7 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit()
       await uploader.addFile(createMockFile("test.jpg"))
 
-      const file = uploader.getFile(uploader.files.value[0].id)
+      const file = uploader.getFile(uploader.files.value[0]!.id)
 
       expect(file.name).toBe("test.jpg")
     })
@@ -250,9 +251,9 @@ describe("useUploadKit", () => {
 
       uploader.reorderFile(0, 2)
 
-      expect(uploader.files.value[0].name).toBe("test2.jpg")
-      expect(uploader.files.value[1].name).toBe("test3.jpg")
-      expect(uploader.files.value[2].name).toBe("test1.jpg")
+      expect(uploader.files.value[0]!.name).toBe("test2.jpg")
+      expect(uploader.files.value[1]!.name).toBe("test3.jpg")
+      expect(uploader.files.value[2]!.name).toBe("test1.jpg")
     })
 
     it("should emit files:reorder event", async () => {
@@ -299,11 +300,11 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit()
       await uploader.addFile(createMockFile("test.jpg"))
 
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
       uploader.updateFile(fileId, { status: "uploading", progress: { percentage: 50 } })
 
-      expect(uploader.files.value[0].status).toBe("uploading")
-      expect(uploader.files.value[0].progress.percentage).toBe(50)
+      expect(uploader.files.value[0]!.status).toBe("uploading")
+      expect(uploader.files.value[0]!.progress.percentage).toBe(50)
     })
   })
 
@@ -317,7 +318,7 @@ describe("useUploadKit", () => {
       await uploader.upload()
 
       expect(uploadFn).toHaveBeenCalledTimes(1)
-      expect(uploader.files.value[0].status).toBe("complete")
+      expect(uploader.files.value[0]!.status).toBe("complete")
     })
 
     it("should emit upload:start and upload:complete events", async () => {
@@ -360,8 +361,8 @@ describe("useUploadKit", () => {
       await uploader.upload()
 
       expect(errorHandler).toHaveBeenCalledTimes(1)
-      expect(uploader.files.value[0].status).toBe("error")
-      expect(uploader.files.value[0].error?.message).toBe("Upload failed")
+      expect(uploader.files.value[0]!.status).toBe("error")
+      expect(uploader.files.value[0]!.error?.message).toBe("Upload failed")
     })
 
     it("should call progress callback during upload", async () => {
@@ -389,8 +390,8 @@ describe("useUploadKit", () => {
       await uploader.addFile(createMockFile("test.jpg"))
       await uploader.upload()
 
-      expect(uploader.files.value[0].status).toBe("error")
-      expect(uploader.files.value[0].error?.message).toContain("No uploader configured")
+      expect(uploader.files.value[0]!.status).toBe("error")
+      expect(uploader.files.value[0]!.error?.message).toContain("No uploader configured")
     })
   })
 
@@ -434,7 +435,7 @@ describe("useUploadKit", () => {
       const mockFile = createMockFile("test.jpg", 1024, "image/jpeg")
 
       await uploader.addFile(mockFile)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       const blob = await uploader.getFileData(fileId)
 
@@ -454,7 +455,7 @@ describe("useUploadKit", () => {
       const mockFile = createMockFile("test.jpg")
 
       await uploader.addFile(mockFile)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       const url = await uploader.getFileURL(fileId)
 
@@ -466,7 +467,7 @@ describe("useUploadKit", () => {
       const mockFile = createMockFile("test.jpg")
 
       await uploader.addFile(mockFile)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       const url1 = await uploader.getFileURL(fileId)
       const url2 = await uploader.getFileURL(fileId)
@@ -481,14 +482,14 @@ describe("useUploadKit", () => {
       const originalFile = createMockFile("test.jpg", 1000, "image/jpeg")
 
       await uploader.addFile(originalFile)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       const newBlob = new Blob([new Uint8Array(500).fill(66)], { type: "image/jpeg" })
       await uploader.replaceFileData(fileId, newBlob, "new-test.jpg")
 
-      expect(uploader.files.value[0].name).toBe("new-test.jpg")
-      expect(uploader.files.value[0].size).toBe(500)
-      expect(uploader.files.value[0].status).toBe("waiting")
+      expect(uploader.files.value[0]!.name).toBe("new-test.jpg")
+      expect(uploader.files.value[0]!.size).toBe(500)
+      expect(uploader.files.value[0]!.status).toBe("waiting")
     })
 
     it("should emit file:replaced event", async () => {
@@ -497,7 +498,7 @@ describe("useUploadKit", () => {
       const originalFile = createMockFile("test.jpg")
 
       await uploader.addFile(originalFile)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       uploader.on("file:replaced", handler)
       await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
@@ -515,7 +516,7 @@ describe("useUploadKit", () => {
       await wait(10)
       uploadFn.mockClear()
 
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
       await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
       await wait(10)
 
@@ -536,9 +537,9 @@ describe("useUploadKit", () => {
       await uploader.initializeExistingFiles([{ id: "remote-1.png" }, { id: "remote-2.png" }])
 
       expect(uploader.files.value).toHaveLength(2)
-      expect(uploader.files.value[0].source).toBe("storage")
-      expect(uploader.files.value[0].status).toBe("complete")
-      expect(uploader.files.value[0].remoteUrl).toBe("https://storage.example.com/remote-1.png")
+      expect(uploader.files.value[0]!.source).toBe("storage")
+      expect(uploader.files.value[0]!.status).toBe("complete")
+      expect(uploader.files.value[0]!.remoteUrl).toBe("https://storage.example.com/remote-1.png")
     })
 
     it("should skip files without ID", async () => {
@@ -630,6 +631,160 @@ describe("useUploadKit", () => {
       await wait(10)
 
       expect(uploadFn).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("initialFiles option", () => {
+    // Helper to create a mock storage plugin with getRemoteFile
+    const createMockStoragePlugin = (getRemoteFileFn?: (fileId: string) => Promise<any>) => ({
+      id: "mock-storage",
+      hooks: {
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/uploaded.jpg" }),
+        getRemoteFile:
+          getRemoteFileFn ||
+          (async (fileId: string) => ({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: `https://storage.example.com/${fileId}`,
+          })),
+      },
+    })
+
+    it("should be ready immediately when no initialFiles provided", () => {
+      const uploader = useUploadKit()
+
+      expect(uploader.isReady.value).toBe(true)
+    })
+
+    it("should not be ready initially when initialFiles is provided", () => {
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: createMockStoragePlugin(),
+      })
+
+      expect(uploader.isReady.value).toBe(false)
+    })
+
+    it("should initialize files from static array and set isReady", async () => {
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg", "file2.png"],
+        storage: createMockStoragePlugin(async (fileId) => ({
+          size: 2048,
+          mimeType: fileId.endsWith(".png") ? "image/png" : "image/jpeg",
+          remoteUrl: `https://storage.example.com/${fileId}`,
+        })),
+      })
+
+      // Wait for async initialization
+      await wait(50)
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(2)
+      expect(uploader.files.value[0]!.id).toBe("file1.jpg")
+      expect(uploader.files.value[1]!.id).toBe("file2.png")
+    })
+
+    it("should initialize from single string value", async () => {
+      const uploader = useUploadKit({
+        initialFiles: "single-file.jpg",
+        storage: createMockStoragePlugin(),
+      })
+
+      await wait(50)
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.id).toBe("single-file.jpg")
+    })
+
+    it("should initialize from reactive ref when value becomes available", async () => {
+      const filesRef = ref<string[] | undefined>(undefined)
+      const uploader = useUploadKit({
+        initialFiles: filesRef,
+        storage: createMockStoragePlugin(),
+      })
+
+      // Initially not ready (waiting for ref value)
+      expect(uploader.isReady.value).toBe(false)
+      expect(uploader.files.value).toHaveLength(0)
+
+      // Set the ref value
+      filesRef.value = ["deferred-file.jpg"]
+      await wait(50)
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.id).toBe("deferred-file.jpg")
+    })
+
+    it("should emit initialFiles:loaded event on success", async () => {
+      const loadedHandler = vi.fn()
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: createMockStoragePlugin(),
+      })
+
+      uploader.on("initialFiles:loaded", loadedHandler)
+      await wait(50)
+
+      expect(loadedHandler).toHaveBeenCalledTimes(1)
+      expect(loadedHandler).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: "file1.jpg" })]))
+    })
+
+    it("should emit initialFiles:error event on failure and still set isReady", async () => {
+      const errorHandler = vi.fn()
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: createMockStoragePlugin(async () => {
+          throw new Error("Storage unavailable")
+        }),
+      })
+
+      uploader.on("initialFiles:error", errorHandler)
+      await wait(50)
+
+      expect(errorHandler).toHaveBeenCalledTimes(1)
+      expect(uploader.isReady.value).toBe(true) // Should still be ready so UI isn't stuck
+    })
+
+    it("should only initialize once even if ref changes multiple times", async () => {
+      const filesRef = ref<string[] | undefined>(undefined)
+      const getRemoteFileFn = vi.fn().mockImplementation(async (fileId: string) => ({
+        size: 1024,
+        mimeType: "image/jpeg",
+        remoteUrl: `https://storage.example.com/${fileId}`,
+      }))
+
+      const uploader = useUploadKit({
+        initialFiles: filesRef,
+        storage: createMockStoragePlugin(getRemoteFileFn),
+      })
+
+      // Set initial value after setup
+      filesRef.value = ["file1.jpg"]
+      await wait(50)
+
+      expect(uploader.files.value).toHaveLength(1)
+
+      // Change the ref - should NOT re-initialize
+      filesRef.value = ["file2.jpg", "file3.jpg"]
+      await wait(50)
+
+      // Should still have only the original file
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.id).toBe("file1.jpg")
+      expect(getRemoteFileFn).toHaveBeenCalledTimes(1)
+    })
+
+    it("should set isReady immediately if initialFiles is empty array", async () => {
+      const uploader = useUploadKit({
+        initialFiles: [],
+      })
+
+      await wait(10)
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(0)
     })
   })
 })

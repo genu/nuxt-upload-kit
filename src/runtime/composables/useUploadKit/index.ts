@@ -1,5 +1,5 @@
 import mitt from "mitt"
-import { computed, onBeforeUnmount, readonly, ref } from "vue"
+import { computed, isRef, onBeforeUnmount, readonly, ref, toValue, watch } from "vue"
 import type {
   UploaderEvents,
   UploadFile,
@@ -54,12 +54,65 @@ const defaultOptions: UploadOptions = {
   autoUpload: false,
 }
 
+/**
+ * Setup initial files from the initialFiles option
+ * Handles both static values and reactive refs with deferred initialization
+ */
+function setupInitialFiles<TUploadResult>({
+  initialFiles,
+  files,
+  isReady,
+  emitter,
+  initializeExistingFiles,
+}: {
+  initialFiles: UploadOptions["initialFiles"]
+  files: { value: UploadFile<TUploadResult>[] }
+  isReady: { value: boolean }
+  emitter: { emit: (type: string, data: unknown) => void }
+  initializeExistingFiles: (files: Array<{ id: string }>) => Promise<void>
+}) {
+  if (initialFiles === undefined) return
+
+  let isInitialized = false
+
+  const doInitialize = async (value: string | string[] | undefined) => {
+    if (isInitialized || !value || files.value.length > 0) return
+
+    const paths = Array.isArray(value) ? value : [value]
+    if (paths.length > 0 && paths.every(Boolean)) {
+      isInitialized = true
+      try {
+        await initializeExistingFiles(paths.map((id) => ({ id })))
+        isReady.value = true
+        emitter.emit("initialFiles:loaded", files.value)
+      } catch (error) {
+        isReady.value = true
+        emitter.emit("initialFiles:error", error)
+      }
+    } else {
+      isReady.value = true
+    }
+  }
+
+  if (isRef(initialFiles)) {
+    watch(
+      () => toValue(initialFiles),
+      (newValue) => doInitialize(newValue),
+      { immediate: true },
+    )
+  } else {
+    doInitialize(initialFiles)
+  }
+}
+
 export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) => {
   const options = { ...defaultOptions, ..._options } as UploadOptions
   const files = ref<UploadFile<TUploadResult>[]>([])
   // Use any internally to avoid intersection type issues, but provide proper types on the return
   const emitter = mitt<any>()
   const status = ref<UploadStatus>("waiting")
+  // Ready state - true when initialization is complete (or immediately if no initialFiles)
+  const isReady = ref(options.initialFiles === undefined)
 
   // Track created object URLs for automatic cleanup
   const createdObjectURLs = new Map<string, string>() // fileId -> objectURL
@@ -791,10 +844,20 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     return currentFile
   }
 
+  // Handle initialFiles option - initialize from existing file paths
+  setupInitialFiles({
+    initialFiles: options.initialFiles,
+    files,
+    isReady,
+    emitter,
+    initializeExistingFiles,
+  })
+
   return {
     // State
     files: readonly(files),
     totalProgress,
+    isReady: readonly(isReady),
 
     // Core Methods
     addFiles,

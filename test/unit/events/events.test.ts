@@ -75,7 +75,7 @@ describe("events", () => {
       const handler = vi.fn()
 
       await uploader.addFile(createMockFile("test.jpg"))
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       uploader.on("file:removed", handler)
       await uploader.removeFile(fileId)
@@ -92,7 +92,7 @@ describe("events", () => {
       await uploader.addFile(createMockFile("test2.jpg"))
 
       uploader.on("file:removed", handler)
-      uploader.removeFiles([uploader.files.value[0].id, uploader.files.value[1].id])
+      uploader.removeFiles([uploader.files.value[0]!.id, uploader.files.value[1]!.id])
 
       expect(handler).toHaveBeenCalledTimes(2)
     })
@@ -118,7 +118,7 @@ describe("events", () => {
       const handler = vi.fn()
 
       await uploader.addFile(createMockFile("test.jpg"))
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       uploader.on("file:replaced", handler)
       await uploader.replaceFileData(fileId, new Blob(["new"]), "new.jpg")
@@ -134,7 +134,7 @@ describe("events", () => {
 
       await uploader.addFile(createMockFile("test.jpg"))
       addedHandler.mockClear() // Clear the initial add
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
 
       uploader.on("file:replaced", replacedHandler)
       uploader.on("file:added", addedHandler)
@@ -215,7 +215,7 @@ describe("events", () => {
       await uploader.upload()
 
       expect(handler).toHaveBeenCalledWith(expect.any(Array))
-      expect(handler.mock.calls[0][0]).toHaveLength(2)
+      expect(handler.mock.calls[0]![0]).toHaveLength(2)
     })
   })
 
@@ -261,7 +261,7 @@ describe("events", () => {
       await uploader.upload()
 
       // Should only include the 2 successful uploads
-      expect(handler.mock.calls[0][0]).toHaveLength(2)
+      expect(handler.mock.calls[0]![0]).toHaveLength(2)
     })
   })
 
@@ -427,7 +427,7 @@ describe("events", () => {
       expect(handler).toHaveBeenCalledTimes(1)
 
       // Replace file data (marks file as needing re-upload)
-      const fileId = uploader.files.value[0].id
+      const fileId = uploader.files.value[0]!.id
       await uploader.replaceFileData(fileId, new Blob(["new"]), "edited.jpg")
       await uploader.upload()
 
@@ -512,6 +512,111 @@ describe("events", () => {
       expect(uploadCompleteHandler).toHaveBeenCalledTimes(2)
       // files:uploaded should fire once when ALL are done
       expect(filesUploadedHandler).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("initialFiles:loaded event", () => {
+    it("should emit when initial files are successfully loaded", async () => {
+      const handler = vi.fn()
+      const mockStorage = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn(),
+          getRemoteFile: async (fileId: string) => ({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: `https://storage.example.com/${fileId}`,
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg", "file2.jpg"],
+        storage: mockStorage,
+      })
+
+      uploader.on("initialFiles:loaded", handler)
+
+      // Wait for async initialization
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ id: "file1.jpg" }), expect.objectContaining({ id: "file2.jpg" })]),
+      )
+    })
+
+    it("should include all loaded files in payload", async () => {
+      const handler = vi.fn()
+      const mockStorage = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn(),
+          getRemoteFile: async (fileId: string) => ({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: `https://storage.example.com/${fileId}`,
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({
+        initialFiles: ["a.jpg", "b.jpg", "c.jpg"],
+        storage: mockStorage,
+      })
+
+      uploader.on("initialFiles:loaded", handler)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(handler.mock.calls[0]![0]).toHaveLength(3)
+    })
+  })
+
+  describe("initialFiles:error event", () => {
+    it("should emit when loading initial files fails", async () => {
+      const handler = vi.fn()
+      const mockStorage = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn(),
+          getRemoteFile: async () => {
+            throw new Error("Storage unavailable")
+          },
+        },
+      }
+
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: mockStorage,
+      })
+
+      uploader.on("initialFiles:error", handler)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("should include error details in payload", async () => {
+      const handler = vi.fn()
+      const mockStorage = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn(),
+          getRemoteFile: async () => {
+            throw new Error("Network timeout")
+          },
+        },
+      }
+
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: mockStorage,
+      })
+
+      uploader.on("initialFiles:error", handler)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(handler).toHaveBeenCalledWith(expect.any(Error))
     })
   })
 

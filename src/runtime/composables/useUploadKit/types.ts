@@ -1,4 +1,5 @@
 import type { Emitter } from "mitt"
+import type { MaybeRef } from "vue"
 
 /**
  * PUBLIC API - Types users commonly need
@@ -269,6 +270,26 @@ export interface UploadOptions {
    * @default false
    */
   autoUpload?: boolean
+
+  /**
+   * Initialize with existing file paths/IDs (e.g., from a form model)
+   * Accepts a static array or a reactive ref for deferred initialization.
+   *
+   * When a ref is provided, the composable watches it and initializes
+   * files once on first truthy value.
+   *
+   * @example Static value
+   * ```typescript
+   * useUploadKit({ initialFiles: ['path/to/image.jpg'] })
+   * ```
+   *
+   * @example Reactive ref (from defineModel)
+   * ```typescript
+   * const model = defineModel<string[]>()
+   * useUploadKit({ initialFiles: model })
+   * ```
+   */
+  initialFiles?: MaybeRef<string | string[] | undefined>
 }
 
 export interface ThumbnailOptions {
@@ -300,6 +321,10 @@ type CoreUploaderEvents<TUploadResult = any> = {
   "files:reorder": { oldIndex: number; newIndex: number }
   /** Emitted when all files have finished uploading (all files have 'complete' status) */
   "files:uploaded": Array<Readonly<UploadFile<TUploadResult>>>
+  /** Emitted when initialFiles have been loaded from storage */
+  "initialFiles:loaded": Array<Readonly<UploadFile<TUploadResult>>>
+  /** Emitted when initialFiles failed to load */
+  "initialFiles:error": unknown
 }
 
 // Events for listening - only core events are typed, plugins can emit arbitrary events
