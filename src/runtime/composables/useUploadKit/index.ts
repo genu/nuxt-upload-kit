@@ -308,7 +308,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
 
         // Check if a storage plugin is available
         const storagePlugin = getStoragePlugin()
-        let remoteFileData: { mimeType: string; size: number; remoteUrl: string; preview?: string }
+        let remoteFileData: { mimeType: string; size: number; remoteUrl: string; preview?: string; uploadResult?: TUploadResult }
 
         if (storagePlugin?.hooks.getRemoteFile) {
           // Use storage plugin to get remote file
@@ -319,7 +319,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
           remoteFileData = await getRemoteFileFn(file.id)
         }
 
-        const existingFile: RemoteUploadFile = {
+        const existingFile: RemoteUploadFile<TUploadResult> = {
           ...file,
           id: file.id,
           name: file.id,
@@ -332,6 +332,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
           remoteUrl: remoteFileData.remoteUrl,
           preview: remoteFileData.preview || file.preview || remoteFileData.remoteUrl, // Use preview from storage, passed-in value, or fallback to remoteUrl
           source: "storage", // File loaded from remote storage
+          // Set uploadResult for consistency with newly uploaded files
+          uploadResult: remoteFileData.uploadResult,
         }
 
         // Remote files are already uploaded and processed - no need to run process hooks

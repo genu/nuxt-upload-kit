@@ -786,5 +786,46 @@ describe("useUploadKit", () => {
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(0)
     })
+
+    it("should set uploadResult on initialized files from storage plugin", async () => {
+      // This test ensures that files initialized via initialFiles have uploadResult set,
+      // making them consistent with newly uploaded files. This is important for consumers
+      // who need to extract the storage path (e.g., blobPath) from files.
+      const uploader = useUploadKit({
+        initialFiles: ["path/to/image.jpg", "path/to/video.mp4"],
+        storage: {
+          id: "mock-azure-storage",
+          hooks: {
+            upload: vi.fn().mockResolvedValue({ url: "https://example.com/uploaded.jpg", blobPath: "uploaded.jpg" }),
+            getRemoteFile: async (fileId: string) => ({
+              size: 2048,
+              mimeType: fileId.endsWith(".mp4") ? "video/mp4" : "image/jpeg",
+              remoteUrl: `https://storage.example.com/${fileId}`,
+              // Storage plugin returns uploadResult for initialized files
+              uploadResult: {
+                url: `https://storage.example.com/${fileId}`,
+                blobPath: fileId,
+              },
+            }),
+          },
+        },
+      })
+
+      await wait(50)
+
+      expect(uploader.files.value).toHaveLength(2)
+
+      // Both files should have uploadResult set
+      const file1 = uploader.files.value[0]!
+      const file2 = uploader.files.value[1]!
+
+      expect(file1.uploadResult).toBeDefined()
+      expect(file1.uploadResult?.blobPath).toBe("path/to/image.jpg")
+      expect(file1.uploadResult?.url).toBe("https://storage.example.com/path/to/image.jpg")
+
+      expect(file2.uploadResult).toBeDefined()
+      expect(file2.uploadResult?.blobPath).toBe("path/to/video.mp4")
+      expect(file2.uploadResult?.url).toBe("https://storage.example.com/path/to/video.mp4")
+    })
   })
 })

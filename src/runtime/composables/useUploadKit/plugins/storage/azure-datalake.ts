@@ -232,6 +232,11 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
             size: properties.contentLength || 0,
             mimeType: properties.contentType || "application/octet-stream",
             remoteUrl: fileClient.url,
+            // Include uploadResult for consistency with newly uploaded files
+            uploadResult: {
+              url: fileClient.url,
+              blobPath: fileClient.name,
+            } satisfies AzureUploadResult,
           }
         }, `Get remote file "${fileId}"`)
       },

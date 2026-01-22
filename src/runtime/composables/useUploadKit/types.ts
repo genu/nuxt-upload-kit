@@ -601,9 +601,15 @@ export interface UploadBlob {
   blobPath: string
 }
 
-type MinimumRemoteFileAttributes = {
+export type MinimumRemoteFileAttributes<TUploadResult = any> = {
   size: number
   mimeType: string
   remoteUrl: string
   preview?: string
+  /**
+   * Optional upload result from storage plugin.
+   * When provided, this will be set on initialized files for consistency
+   * with newly uploaded files, eliminating the need for special handling.
+   */
+  uploadResult?: TUploadResult
 }
