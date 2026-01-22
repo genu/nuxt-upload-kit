@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.1.13
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.12...v0.1.13)
+
+### 🩹 Fixes
+
+- Include uploadResult in remote file attributes for consistency with newly uploaded files ([c186999](https://github.com/genu/nuxt-upload-kit/commit/c186999))
+
+### ✅ Tests
+
+- Use event-based waiting ([480e974](https://github.com/genu/nuxt-upload-kit/commit/480e974))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.12
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.11...v0.1.12)
