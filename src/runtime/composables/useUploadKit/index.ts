@@ -414,19 +414,45 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     return addedFiles
   }
 
-  const removeFile = async (fileId: string, removeOptions?: { deleteFromStorage?: boolean }) => {
-    const { deleteFromStorage = true } = removeOptions ?? {}
+  /**
+   * Remove a file from the upload manager.
+   *
+   * @param fileId - The ID of the file to remove
+   * @param removeOptions - Options for controlling storage deletion behavior
+   * @param removeOptions.deleteFromStorage - Controls whether to delete the file from remote storage:
+   *   - `"always"` (default): Always delete from storage if the file has a remoteUrl
+   *   - `"never"`: Never delete from storage, only remove from local state
+   *   - `"local-only"`: Only delete files that were uploaded in this session (source === "local"),
+   *     preserving files that were loaded from storage via initializeExistingFiles
+   */
+  const removeFile = async (fileId: string, removeOptions?: { deleteFromStorage?: "always" | "never" | "local-only" }) => {
+    const { deleteFromStorage = "always" } = removeOptions ?? {}
     const file = files.value.find((f) => f.id === fileId)
 
     if (!file) return
 
+    // Determine if we should delete from storage based on the deleteFromStorage option
+    let shouldDelete: boolean
+    switch (deleteFromStorage) {
+      case "always":
+        shouldDelete = true
+        break
+      case "never":
+        shouldDelete = false
+        break
+      case "local-only":
+        // Only delete files that were uploaded in this session, not pre-loaded from storage
+        shouldDelete = file.source === "local"
+        break
+    }
+
     // Only call storage plugin's remove hook if:
-    // - deleteFromStorage is true (default)
+    // - shouldDelete is true
     // - file has a remoteUrl (indicates it exists in remote storage)
     // This applies to both:
     // - Local files that were uploaded (source: 'local', remoteUrl set after upload)
     // - Remote files (source: 'storage' | 'instagram' | etc., remoteUrl set from initialization)
-    if (deleteFromStorage && file.remoteUrl) {
+    if (shouldDelete && file.remoteUrl) {
       const storagePlugin = getStoragePlugin()
       if (storagePlugin?.hooks.remove) {
         try {

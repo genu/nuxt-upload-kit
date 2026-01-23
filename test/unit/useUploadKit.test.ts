@@ -182,7 +182,7 @@ describe("useUploadKit", () => {
       expect(uploader.files.value).toHaveLength(1)
     })
 
-    it("should call storage plugin remove hook by default for files with remoteUrl", async () => {
+    it("should call storage plugin remove hook by default (deleteFromStorage: 'always')", async () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
@@ -212,7 +212,7 @@ describe("useUploadKit", () => {
       expect(uploader.files.value).toHaveLength(0)
     })
 
-    it("should skip storage plugin remove hook when deleteFromStorage is false", async () => {
+    it("should skip storage plugin remove hook when deleteFromStorage is 'never'", async () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
@@ -232,10 +232,53 @@ describe("useUploadKit", () => {
       // Add a remote file using initializeExistingFiles
       await uploader.initializeExistingFiles([{ id: "remote-1" }])
 
-      await uploader.removeFile("remote-1", { deleteFromStorage: false })
+      await uploader.removeFile("remote-1", { deleteFromStorage: "never" })
 
       expect(removeHook).not.toHaveBeenCalled()
       expect(uploader.files.value).toHaveLength(0)
+    })
+
+    it("should only delete local uploads when deleteFromStorage is 'local-only'", async () => {
+      const removeHook = vi.fn()
+      const uploadHook = vi.fn().mockResolvedValue({
+        url: "https://storage.example.com/uploaded.jpg",
+        storageKey: "uploaded.jpg",
+      })
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: uploadHook,
+          remove: removeHook,
+          getRemoteFile: vi.fn().mockResolvedValue({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: "https://storage.example.com/existing.jpg",
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+
+      // Add a remote file (source: "storage") - simulates pre-populated file
+      await uploader.initializeExistingFiles([{ id: "existing-file" }])
+
+      // Add and upload a local file (source: "local")
+      await uploader.addFile(createMockFile("new-upload.jpg"))
+      const localFileId = uploader.files.value.find((f) => f.source === "local")!.id
+
+      // Upload to set remoteUrl
+      await uploader.upload()
+
+      expect(uploader.files.value).toHaveLength(2)
+
+      // Remove the pre-populated file with "local-only" - should NOT delete from storage
+      await uploader.removeFile("existing-file", { deleteFromStorage: "local-only" })
+      expect(removeHook).not.toHaveBeenCalled()
+
+      // Remove the locally uploaded file with "local-only" - SHOULD delete from storage
+      await uploader.removeFile(localFileId, { deleteFromStorage: "local-only" })
+      expect(removeHook).toHaveBeenCalledTimes(1)
+      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ source: "local" }), expect.any(Object))
     })
 
     it("should not call storage plugin remove hook for files without remoteUrl", async () => {
@@ -252,6 +295,7 @@ describe("useUploadKit", () => {
       await uploader.addFile(createMockFile("local.jpg"))
       const fileId = uploader.files.value[0]!.id
 
+      // File hasn't been uploaded yet, so no remoteUrl
       await uploader.removeFile(fileId)
 
       // Should not call remove hook since file doesn't have remoteUrl yet
