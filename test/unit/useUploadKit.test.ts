@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ref } from "vue"
 import { createMockFile, wait } from "../helpers"
+import type { StoragePlugin } from "../../src/runtime/composables/useUploadKit/types"
 
 // Mock Vue's onBeforeUnmount since we're not in a component context
 vi.mock("vue", async () => {
@@ -179,6 +180,83 @@ describe("useUploadKit", () => {
       await uploader.removeFile("non-existent-id")
 
       expect(uploader.files.value).toHaveLength(1)
+    })
+
+    it("should call storage plugin remove hook by default for files with remoteUrl", async () => {
+      const removeHook = vi.fn()
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: vi.fn(),
+          remove: removeHook,
+          getRemoteFile: vi.fn().mockResolvedValue({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: "https://storage.example.com/remote-1.jpg",
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+
+      // Add a remote file using initializeExistingFiles
+      await uploader.initializeExistingFiles([{ id: "remote-1" }])
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.remoteUrl).toBe("https://storage.example.com/remote-1.jpg")
+
+      await uploader.removeFile("remote-1")
+
+      expect(removeHook).toHaveBeenCalledTimes(1)
+      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ id: "remote-1" }), expect.any(Object))
+      expect(uploader.files.value).toHaveLength(0)
+    })
+
+    it("should skip storage plugin remove hook when deleteFromStorage is false", async () => {
+      const removeHook = vi.fn()
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: vi.fn(),
+          remove: removeHook,
+          getRemoteFile: vi.fn().mockResolvedValue({
+            size: 1024,
+            mimeType: "image/jpeg",
+            remoteUrl: "https://storage.example.com/remote-1.jpg",
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+
+      // Add a remote file using initializeExistingFiles
+      await uploader.initializeExistingFiles([{ id: "remote-1" }])
+
+      await uploader.removeFile("remote-1", { deleteFromStorage: false })
+
+      expect(removeHook).not.toHaveBeenCalled()
+      expect(uploader.files.value).toHaveLength(0)
+    })
+
+    it("should not call storage plugin remove hook for files without remoteUrl", async () => {
+      const removeHook = vi.fn()
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: vi.fn(),
+          remove: removeHook,
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+      await uploader.addFile(createMockFile("local.jpg"))
+      const fileId = uploader.files.value[0]!.id
+
+      await uploader.removeFile(fileId)
+
+      // Should not call remove hook since file doesn't have remoteUrl yet
+      expect(removeHook).not.toHaveBeenCalled()
+      expect(uploader.files.value).toHaveLength(0)
     })
   })
 

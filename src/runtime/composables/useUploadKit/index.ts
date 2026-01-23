@@ -414,17 +414,19 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     return addedFiles
   }
 
-  const removeFile = async (fileId: string) => {
+  const removeFile = async (fileId: string, removeOptions?: { deleteFromStorage?: boolean }) => {
+    const { deleteFromStorage = true } = removeOptions ?? {}
     const file = files.value.find((f) => f.id === fileId)
 
     if (!file) return
 
-    // Only call storage plugin's remove hook if file has a remoteUrl
-    // remoteUrl indicates the file exists in remote storage and should be deleted
+    // Only call storage plugin's remove hook if:
+    // - deleteFromStorage is true (default)
+    // - file has a remoteUrl (indicates it exists in remote storage)
     // This applies to both:
     // - Local files that were uploaded (source: 'local', remoteUrl set after upload)
     // - Remote files (source: 'storage' | 'instagram' | etc., remoteUrl set from initialization)
-    if (file.remoteUrl) {
+    if (deleteFromStorage && file.remoteUrl) {
       const storagePlugin = getStoragePlugin()
       if (storagePlugin?.hooks.remove) {
         try {
