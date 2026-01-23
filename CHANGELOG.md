@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.15
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.14...v0.1.15)
+
+### 🚀 Enhancements
+
+- Enhance removeFile function to conditionally delete from storage based on options ([833e1c5](https://github.com/genu/nuxt-upload-kit/commit/833e1c5))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.14
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.13...v0.1.14)
