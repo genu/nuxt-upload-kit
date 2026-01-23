@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.14
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.13...v0.1.14)
+
+### 💅 Refactors
+
+- Unify upload result structure by replacing 'key' with 'storageKey' across storage plugins ([32d0bf1](https://github.com/genu/nuxt-upload-kit/commit/32d0bf1))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.13
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.12...v0.1.13)
