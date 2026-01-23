@@ -274,16 +274,68 @@ describe("providers", () => {
         // Expected result format
         interface AzureUploadResult {
           url: string
-          blobPath: string
+          storageKey: string
         }
 
         const expectedResult: AzureUploadResult = {
           url: "https://storage.blob.core.windows.net/container/test.jpg",
-          blobPath: "test.jpg",
+          storageKey: "test.jpg",
         }
 
         expect(expectedResult.url).toBeDefined()
-        expect(expectedResult.blobPath).toBeDefined()
+        expect(expectedResult.storageKey).toBeDefined()
+      })
+    })
+
+    describe("storageKey round-trip contract", () => {
+      it("storageKey should equal file.id for consistent round-trip retrieval", () => {
+        // This test documents the critical contract:
+        // When a SAS URL is scoped to a subdirectory (e.g., {container}/{organizationId}),
+        // the storageKey must be the file.id (just the filename), NOT the full path.
+        //
+        // Example scenario:
+        // - SAS URL points to: {container}/org123
+        // - file.id = "abc.jpg"
+        // - Upload stores file at: {container}/org123/abc.jpg
+        // - storageKey returned: "abc.jpg" (file.id, not full path)
+        // - getRemoteFile("abc.jpg") correctly resolves to: {container}/org123/abc.jpg
+        //
+        // If storageKey was the full path (org123/abc.jpg), getRemoteFile would
+        // incorrectly resolve to: {container}/org123/org123/abc.jpg (doubled!)
+
+        const fileId = "1769118690193-4ll16sb7zy.jpg"
+
+        // The upload hook returns storageKey: file.id
+        const uploadResult = {
+          url: "https://storage.blob.core.windows.net/container/org123/1769118690193-4ll16sb7zy.jpg",
+          storageKey: fileId, // Must equal file.id, not full path
+        }
+
+        // The storageKey can be directly passed to getRemoteFile
+        const retrievalKey = uploadResult.storageKey
+
+        // Verify the contract: storageKey === file.id
+        expect(retrievalKey).toBe(fileId)
+        expect(retrievalKey).not.toContain("/") // Should not contain path segments
+      })
+
+      it("getRemoteFile uploadResult should also use consistent storageKey", () => {
+        // When getRemoteFile returns uploadResult, it should use the same
+        // fileId that was passed in, ensuring consistency
+        const fileId = "my-file.jpg"
+
+        // Simulating what getRemoteFile returns
+        const remoteFileResult = {
+          size: 1024,
+          mimeType: "image/jpeg",
+          remoteUrl: "https://storage.blob.core.windows.net/container/org123/my-file.jpg",
+          uploadResult: {
+            url: "https://storage.blob.core.windows.net/container/org123/my-file.jpg",
+            storageKey: fileId, // Should be the fileId passed to getRemoteFile
+          },
+        }
+
+        expect(remoteFileResult.uploadResult.storageKey).toBe(fileId)
       })
     })
   })

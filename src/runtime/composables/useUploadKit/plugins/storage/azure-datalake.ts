@@ -60,9 +60,9 @@ export interface AzureUploadResult {
   url: string
 
   /**
-   * File name/path in the storage
+   * Identifier to pass to getRemoteFile for retrieval
    */
-  blobPath: string
+  storageKey: string
 }
 
 export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, AzureUploadResult>((options) => {
@@ -215,7 +215,9 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
 
           return {
             url: fileClient.url,
-            blobPath: fileClient.name,
+            // Return just the file ID (filename), not the full path from container root
+            // This ensures the storageKey can be used directly with getRemoteFile
+            storageKey: file.id,
           } satisfies AzureUploadResult
         }, `Upload file "${file.name}"`)
       },
@@ -235,7 +237,8 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
             // Include uploadResult for consistency with newly uploaded files
             uploadResult: {
               url: fileClient.url,
-              blobPath: fileClient.name,
+              // Return the fileId as passed in, not the full path from container root
+              storageKey: fileId,
             } satisfies AzureUploadResult,
           }
         }, `Get remote file "${fileId}"`)

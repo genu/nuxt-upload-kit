@@ -70,9 +70,9 @@ export interface FirebaseStorageUploadResult {
   url: string
 
   /**
-   * Full path in Firebase Storage
+   * Identifier to pass to getRemoteFile for retrieval
    */
-  fullPath: string
+  storageKey: string
 
   /**
    * Storage bucket name
@@ -187,7 +187,8 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
 
           resolve({
             url: downloadURL,
-            fullPath: uploadMetadata.fullPath,
+            // Use fileId (not fullPath) to ensure storageKey can be used with getRemoteFile
+            storageKey: fileId,
             bucket: uploadMetadata.bucket,
             generation: uploadMetadata.generation,
             md5Hash: uploadMetadata.md5Hash,
@@ -231,6 +232,14 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
             size: metadata.size,
             mimeType: metadata.contentType || "application/octet-stream",
             remoteUrl: downloadURL,
+            // Include uploadResult for consistency with newly uploaded files
+            uploadResult: {
+              url: downloadURL,
+              storageKey: fileId,
+              bucket: metadata.bucket,
+              generation: metadata.generation,
+              md5Hash: metadata.md5Hash,
+            } satisfies FirebaseStorageUploadResult,
           }
         }, `Get remote file "${fileId}"`)
       },

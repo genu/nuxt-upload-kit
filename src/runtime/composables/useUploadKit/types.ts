@@ -378,7 +378,14 @@ export type SetupHook<TPluginEvents extends Record<string, any> = Record<string,
 export type UploadHook<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> = (
   file: UploadFile<TUploadResult>,
   context: PluginContext<TPluginEvents> & { onProgress: (progress: number) => void },
-) => Promise<TUploadResult & { url: string }>
+) => Promise<
+  TUploadResult & {
+    /** Public URL to access the uploaded file */
+    url: string
+    /** Identifier to pass to getRemoteFile for retrieval */
+    storageKey: string
+  }
+>
 
 export type GetRemoteFileHook<TPluginEvents extends Record<string, any> = Record<string, never>> = (
   fileId: string,

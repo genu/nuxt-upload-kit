@@ -61,9 +61,9 @@ export interface CloudflareR2UploadResult {
   url: string
 
   /**
-   * R2 object key (file ID used for upload)
+   * Identifier to pass to getRemoteFile for retrieval
    */
-  key: string
+  storageKey: string
 
   /**
    * ETag of the uploaded object (from response headers)
@@ -131,7 +131,7 @@ export const PluginCloudflareR2 = defineStorageAdapter<CloudflareR2Options, Clou
 
           return {
             url: publicUrl,
-            key: file.id,
+            storageKey: file.id,
             etag,
           } satisfies CloudflareR2UploadResult
         }, `Upload file "${file.name}"`)
@@ -159,6 +159,11 @@ export const PluginCloudflareR2 = defineStorageAdapter<CloudflareR2Options, Clou
             size: Number.parseInt(response.headers.get("content-length") || "0", 10),
             mimeType: response.headers.get("content-type") || "application/octet-stream",
             remoteUrl: downloadUrl,
+            // Include uploadResult for consistency with newly uploaded files
+            uploadResult: {
+              url: downloadUrl,
+              storageKey: fileId,
+            } satisfies CloudflareR2UploadResult,
           }
         }, `Get remote file "${fileId}"`)
       },

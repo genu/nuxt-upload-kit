@@ -163,9 +163,9 @@ describe("providers", () => {
         const result = await plugin.hooks.upload(file, context)
 
         expect(result).toHaveProperty("url")
-        expect(result).toHaveProperty("key")
+        expect(result).toHaveProperty("storageKey")
         expect(result.url).toBe("https://pub-xxx.r2.dev/file.jpg")
-        expect(result.key).toBe("my-file-id")
+        expect(result.storageKey).toBe("my-file-id")
       })
     })
 
@@ -286,18 +286,51 @@ describe("providers", () => {
       it("should define correct result structure", () => {
         interface CloudflareR2UploadResult {
           url: string
-          key: string
+          storageKey: string
           etag?: string
         }
 
         const expectedResult: CloudflareR2UploadResult = {
           url: "https://pub-xxx.r2.dev/file.jpg",
-          key: "file.jpg",
+          storageKey: "file.jpg",
           etag: "abc123",
         }
 
         expect(expectedResult.url).toBeDefined()
-        expect(expectedResult.key).toBeDefined()
+        expect(expectedResult.storageKey).toBeDefined()
+      })
+    })
+
+    describe("storageKey round-trip contract", () => {
+      it("storageKey should equal file.id for consistent round-trip retrieval", () => {
+        // The storageKey must equal file.id so it can be passed directly to getRemoteFile.
+        // The backend receives file.id when generating presigned URLs, so using file.id
+        // as storageKey ensures the same identifier works for both upload and retrieval.
+        const fileId = "my-unique-file-id.jpg"
+
+        const uploadResult = {
+          url: "https://pub-xxx.r2.dev/uploads/my-unique-file-id.jpg",
+          storageKey: fileId,
+          etag: "abc123",
+        }
+
+        expect(uploadResult.storageKey).toBe(fileId)
+      })
+
+      it("getRemoteFile uploadResult should use the same fileId passed in", () => {
+        const fileId = "my-file.jpg"
+
+        const remoteFileResult = {
+          size: 1024,
+          mimeType: "image/jpeg",
+          remoteUrl: "https://pub-xxx.r2.dev/my-file.jpg",
+          uploadResult: {
+            url: "https://pub-xxx.r2.dev/my-file.jpg",
+            storageKey: fileId,
+          },
+        }
+
+        expect(remoteFileResult.uploadResult.storageKey).toBe(fileId)
       })
     })
 

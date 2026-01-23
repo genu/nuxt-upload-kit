@@ -61,9 +61,9 @@ export interface AWSS3UploadResult {
   url: string
 
   /**
-   * S3 object key (file ID used for upload)
+   * Identifier to pass to getRemoteFile for retrieval
    */
-  key: string
+  storageKey: string
 
   /**
    * ETag of the uploaded object (from response headers)
@@ -131,7 +131,7 @@ export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>
 
           return {
             url: publicUrl,
-            key: file.id,
+            storageKey: file.id,
             etag,
           } satisfies AWSS3UploadResult
         }, `Upload file "${file.name}"`)
@@ -159,6 +159,11 @@ export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>
             size: Number.parseInt(response.headers.get("content-length") || "0", 10),
             mimeType: response.headers.get("content-type") || "application/octet-stream",
             remoteUrl: downloadUrl,
+            // Include uploadResult for consistency with newly uploaded files
+            uploadResult: {
+              url: downloadUrl,
+              storageKey: fileId,
+            } satisfies AWSS3UploadResult,
           }
         }, `Get remote file "${fileId}"`)
       },
