@@ -21,13 +21,9 @@
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
     },
-    "./providers/aws-s3": {
-      "types": "./dist/providers/aws-s3.d.mts",
-      "import": "./dist/providers/aws-s3.mjs"
-    },
-    "./providers/cloudflare-r2": {
-      "types": "./dist/providers/cloudflare-r2.d.mts",
-      "import": "./dist/providers/cloudflare-r2.mjs"
+    "./providers/s3": {
+      "types": "./dist/providers/s3.d.mts",
+      "import": "./dist/providers/s3.mjs"
     },
     "./providers/azure-datalake": {
       "types": "./dist/providers/azure-datalake.d.mts",

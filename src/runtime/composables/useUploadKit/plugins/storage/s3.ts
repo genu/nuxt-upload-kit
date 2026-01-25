@@ -1,6 +1,6 @@
 import { defineStorageAdapter } from "../../types"
 
-export interface AWSS3Options {
+export interface S3Options {
   /**
    * Function to get a presigned URL for uploading a file
    * Your backend should generate this using AWS SDK's getSignedUrl
@@ -54,7 +54,7 @@ export interface AWSS3Options {
   retryDelay?: number
 }
 
-export interface AWSS3UploadResult {
+export interface S3UploadResult {
   /**
    * Public URL to the uploaded file
    */
@@ -71,7 +71,18 @@ export interface AWSS3UploadResult {
   etag?: string
 }
 
-export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>((options) => {
+/**
+ * S3-compatible storage adapter
+ *
+ * Works with AWS S3 and any S3-compatible service:
+ * - Cloudflare R2
+ * - DigitalOcean Spaces
+ * - MinIO
+ * - Backblaze B2
+ * - Wasabi
+ * - Supabase Storage
+ */
+export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options) => {
   // Retry configuration
   const maxRetries = options.retries ?? 3
   const initialRetryDelay = options.retryDelay ?? 1000
@@ -109,7 +120,7 @@ export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>
   }
 
   return {
-    id: "aws-s3-storage",
+    id: "s3-storage",
     hooks: {
       /**
        * Upload file to S3 using presigned URL
@@ -133,7 +144,7 @@ export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>
             url: publicUrl,
             storageKey: file.id,
             etag,
-          } satisfies AWSS3UploadResult
+          } satisfies S3UploadResult
         }, `Upload file "${file.name}"`)
       },
 
@@ -163,7 +174,7 @@ export const PluginAWSS3 = defineStorageAdapter<AWSS3Options, AWSS3UploadResult>
             uploadResult: {
               url: downloadUrl,
               storageKey: fileId,
-            } satisfies AWSS3UploadResult,
+            } satisfies S3UploadResult,
           }
         }, `Get remote file "${fileId}"`)
       },

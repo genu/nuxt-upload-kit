@@ -1,6 +1,6 @@
 import { defineBuildConfig } from "unbuild"
 
-const providers = ["aws-s3", "cloudflare-r2", "azure-datalake", "firebase"]
+const providers = ["s3", "azure-datalake", "firebase"]
 
 export default defineBuildConfig({
   entries: providers.map((name) => ({

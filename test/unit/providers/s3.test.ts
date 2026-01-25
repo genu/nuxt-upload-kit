@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createMockPluginContext, createMockLocalUploadFile, createMockRemoteUploadFile } from "../../helpers"
-import { PluginAWSS3 } from "../../../src/runtime/composables/useUploadKit/plugins/storage/aws-s3"
+import { PluginS3 } from "../../../src/runtime/composables/useUploadKit/plugins/storage/s3"
 
 // Factory to create mock XHR instances
 function createMockXHR() {
@@ -29,7 +29,7 @@ function createMockXHR() {
 }
 
 describe("providers", () => {
-  describe("PluginAWSS3", () => {
+  describe("PluginS3", () => {
     let mockXHRInstance: ReturnType<typeof createMockXHR>
 
     beforeEach(() => {
@@ -48,23 +48,23 @@ describe("providers", () => {
 
     describe("plugin configuration", () => {
       it("should have correct plugin ID", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
-        expect(plugin.id).toBe("aws-s3-storage")
+        expect(plugin.id).toBe("s3-storage")
       })
 
       it("should require getPresignedUploadUrl function", () => {
         const getPresignedUploadUrl = vi.fn()
-        const plugin = PluginAWSS3({ getPresignedUploadUrl })
+        const plugin = PluginS3({ getPresignedUploadUrl })
 
         expect(plugin).toBeDefined()
         expect(plugin.hooks.upload).toBeDefined()
       })
 
       it("should accept optional getPresignedDownloadUrl", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           getPresignedDownloadUrl: vi.fn(),
         })
@@ -73,7 +73,7 @@ describe("providers", () => {
       })
 
       it("should accept optional deleteFile function", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           deleteFile: vi.fn(),
         })
@@ -82,7 +82,7 @@ describe("providers", () => {
       })
 
       it("should accept retry configuration", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           retries: 5,
           retryDelay: 2000,
@@ -94,7 +94,7 @@ describe("providers", () => {
 
     describe("upload hook", () => {
       it("should have upload hook defined", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
@@ -103,7 +103,7 @@ describe("providers", () => {
       })
 
       it("should reject remote files without local data", async () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
@@ -124,7 +124,7 @@ describe("providers", () => {
           publicUrl: "https://bucket.s3.amazonaws.com/key",
         })
 
-        const plugin = PluginAWSS3({ getPresignedUploadUrl })
+        const plugin = PluginS3({ getPresignedUploadUrl })
 
         const file = createMockLocalUploadFile({
           id: "test-file-id",
@@ -152,7 +152,7 @@ describe("providers", () => {
           publicUrl: "https://bucket.s3.amazonaws.com/uploads/file.jpg",
         })
 
-        const plugin = PluginAWSS3({ getPresignedUploadUrl })
+        const plugin = PluginS3({ getPresignedUploadUrl })
 
         const file = createMockLocalUploadFile({ id: "my-file-id" })
         const context = {
@@ -171,7 +171,7 @@ describe("providers", () => {
 
     describe("getRemoteFile hook", () => {
       it("should have getRemoteFile hook defined", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           getPresignedDownloadUrl: vi.fn(),
         })
@@ -181,7 +181,7 @@ describe("providers", () => {
       })
 
       it("should throw error if getPresignedDownloadUrl is not provided", async () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
@@ -210,7 +210,7 @@ describe("providers", () => {
           }),
         )
 
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           getPresignedDownloadUrl,
         })
@@ -224,7 +224,7 @@ describe("providers", () => {
 
     describe("remove hook", () => {
       it("should have remove hook defined", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           deleteFile: vi.fn(),
         })
@@ -234,7 +234,7 @@ describe("providers", () => {
       })
 
       it("should throw error if deleteFile is not provided", async () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
@@ -247,7 +247,7 @@ describe("providers", () => {
       it("should call deleteFile with file id", async () => {
         const deleteFile = vi.fn().mockResolvedValue(undefined)
 
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
           deleteFile,
         })
@@ -263,7 +263,7 @@ describe("providers", () => {
 
     describe("retry logic", () => {
       it("should use default retry configuration", () => {
-        const plugin = PluginAWSS3({
+        const plugin = PluginS3({
           getPresignedUploadUrl: vi.fn(),
         })
 
@@ -285,13 +285,13 @@ describe("providers", () => {
 
     describe("upload result format", () => {
       it("should define correct result structure", () => {
-        interface AWSS3UploadResult {
+        interface S3UploadResult {
           url: string
           storageKey: string
           etag?: string
         }
 
-        const expectedResult: AWSS3UploadResult = {
+        const expectedResult: S3UploadResult = {
           url: "https://bucket.s3.amazonaws.com/file.jpg",
           storageKey: "file.jpg",
           etag: "abc123",
@@ -342,7 +342,7 @@ describe("providers", () => {
           publicUrl: "https://bucket.s3.amazonaws.com/key",
         })
 
-        const plugin = PluginAWSS3({ getPresignedUploadUrl })
+        const plugin = PluginS3({ getPresignedUploadUrl })
         const file = createMockLocalUploadFile()
         const context = {
           ...createMockPluginContext(),
@@ -360,7 +360,7 @@ describe("providers", () => {
           publicUrl: "https://bucket.s3.amazonaws.com/key",
         })
 
-        const plugin = PluginAWSS3({ getPresignedUploadUrl })
+        const plugin = PluginS3({ getPresignedUploadUrl })
         const file = createMockLocalUploadFile({ mimeType: "image/png" })
         const context = {
           ...createMockPluginContext(),

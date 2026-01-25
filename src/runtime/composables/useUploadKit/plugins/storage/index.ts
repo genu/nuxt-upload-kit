@@ -4,8 +4,7 @@
  * All storage adapters are now imported from dedicated entry points:
  *
  * ```typescript
- * import { PluginAWSS3 } from "nuxt-upload-kit/providers/aws-s3"
- * import { PluginCloudflareR2 } from "nuxt-upload-kit/providers/cloudflare-r2"
+ * import { PluginS3 } from "nuxt-upload-kit/providers/s3"
  * import { PluginAzureDataLake } from "nuxt-upload-kit/providers/azure-datalake"
  * import { PluginFirebaseStorage } from "nuxt-upload-kit/providers/firebase"
  * ```
@@ -14,7 +13,6 @@
  */
 
 // Re-export types only (no runtime code) for backwards compatibility
-export type { AWSS3Options, AWSS3UploadResult } from "./aws-s3"
-export type { CloudflareR2Options, CloudflareR2UploadResult } from "./cloudflare-r2"
+export type { S3Options, S3UploadResult } from "./s3"
 export type { AzureDataLakeOptions, AzureUploadResult } from "./azure-datalake"
 export type { FirebaseStorageOptions, FirebaseStorageUploadResult } from "./firebase-storage"
