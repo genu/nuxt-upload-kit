@@ -1,6 +1,26 @@
 # Changelog
 
 
+## v0.1.17
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.16...v0.1.17)
+
+### 💅 Refactors
+
+- Replace Cloudflare R2 provider with S3-compatible provider ([ee8bf28](https://github.com/genu/nuxt-upload-kit/commit/ee8bf28))
+
+### 📖 Documentation
+
+- Update README and index documentation for multi-provider storage support ([b947107](https://github.com/genu/nuxt-upload-kit/commit/b947107))
+
+### 🏡 Chore
+
+- Formatting ([7c1d0eb](https://github.com/genu/nuxt-upload-kit/commit/7c1d0eb))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.16
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.15...v0.1.16)
