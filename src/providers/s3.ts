@@ -31,8 +31,4 @@
  *
  * @experimental This adapter is experimental and may change in future releases.
  */
-export {
-  PluginS3,
-  type S3Options,
-  type S3UploadResult,
-} from "../runtime/composables/useUploadKit/plugins/storage/s3"
+export { PluginS3, type S3Options, type S3UploadResult } from "../runtime/composables/useUploadKit/plugins/storage/s3"
