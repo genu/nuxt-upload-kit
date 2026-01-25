@@ -12,7 +12,7 @@
 ## Features
 
 - 🔌 **Plugin System** - Extensible architecture with built-in plugins for validation, compression, and storage
-- 📤 **Multi-provider Storage** - Azure Data Lake support with S3, Cloudinary coming soon
+- 📤 **Multi-provider Storage** - S3-compatible (AWS, R2, Spaces, MinIO), Azure Data Lake, Firebase Storage
 - 🖼️ **Image Processing** - Automatic thumbnail generation and image compression
 - 🎥 **Video Compression** - FFmpeg-powered video compression (optional)
 - ✅ **Validation** - File type, size, and count validation out of the box

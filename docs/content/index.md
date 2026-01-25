@@ -50,14 +50,14 @@ Everything you need for [file uploads]{.text-primary}
   spotlight: true
   spotlight-color: primary
   icon: i-lucide-cloud-upload
-  to: /storage-adapters
+  to: /storage-adapters/overview
   ---
 
   #title
   Storage Adapters
 
   #description
-  Azure Data Lake Storage built-in. Upload directly to the cloud with SAS token authentication and automatic retry logic.
+  S3-compatible (AWS, R2, Spaces, MinIO), Azure Data Lake, and Firebase Storage. Upload directly to the cloud with presigned URLs and automatic retry logic.
   :::
 
   :::u-page-card
@@ -194,29 +194,31 @@ Built-in storage adapters handle authentication, chunked uploads, and error hand
   :::u-page-card
   ---
   spotlight: true
-  spotlight-color: neutral
+  spotlight-color: primary
   icon: i-simple-icons-amazons3
+  to: /storage-adapters/s3
   ---
 
   #title
-  Amazon S3
+  S3 Compatible
 
   #description
-  Coming soon — direct uploads to S3 with presigned URLs and multipart upload support.
+  Upload to AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO, and more with presigned URLs.
   :::
 
   :::u-page-card
   ---
   spotlight: true
-  spotlight-color: neutral
-  icon: i-simple-icons-cloudinary
+  spotlight-color: primary
+  icon: i-simple-icons-firebase
+  to: /storage-adapters/firebase-storage
   ---
 
   #title
-  Cloudinary
+  Firebase Storage
 
   #description
-  Coming soon — upload and transform images with Cloudinary's powerful media API.
+  Upload to Firebase Storage with Firebase SDK authentication and real-time progress tracking.
   :::
 ::
 
