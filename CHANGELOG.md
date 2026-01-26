@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.1.18
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.17...v0.1.18)
+
+### 💅 Refactors
+
+- Improve Vite dependency optimization configuration ([d972baf](https://github.com/genu/nuxt-upload-kit/commit/d972baf))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.17
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.16...v0.1.17)
