@@ -23,13 +23,19 @@ export default defineNuxtModule<ModuleOptions>({
   setup(options, _nuxt) {
     const resolver = createResolver(import.meta.url)
 
-    // Exclude FFmpeg packages from Vite's dependency optimization
-    // @see https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
-    // FFmpeg uses Web Workers that don't work correctly when pre-bundled by Vite
+    // Configure Vite's dependency optimization
     _nuxt.options.vite = _nuxt.options.vite ?? {}
     _nuxt.options.vite.optimizeDeps = _nuxt.options.vite.optimizeDeps ?? {}
+
+    // Exclude FFmpeg packages - they use Web Workers that don't work correctly when pre-bundled
+    // @see https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
     _nuxt.options.vite.optimizeDeps.exclude = _nuxt.options.vite.optimizeDeps.exclude ?? []
     _nuxt.options.vite.optimizeDeps.exclude.push("@ffmpeg/ffmpeg", "@ffmpeg/util")
+
+    // Include Node.js polyfills required by Azure SDK (used by Azure DataLake storage plugin)
+    // The `events` package uses CommonJS exports that need pre-bundling for browser ESM
+    _nuxt.options.vite.optimizeDeps.include = _nuxt.options.vite.optimizeDeps.include ?? []
+    _nuxt.options.vite.optimizeDeps.include.push("events")
 
     if (options.autoImport) {
       // Auto-import useUploadKit composable
