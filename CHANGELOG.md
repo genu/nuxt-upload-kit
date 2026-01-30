@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.1.19
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.18...v0.1.19)
+
+### 💅 Refactors
+
+- Improve Vite dependency optimization configuration ([d972baf](https://github.com/genu/nuxt-upload-kit/commit/d972baf))
+- Extract composable logic into focused modules and enhance docs ([03d2fca](https://github.com/genu/nuxt-upload-kit/commit/03d2fca))
+
+### 🏡 Chore
+
+- **release:** V0.1.18 ([cb02d67](https://github.com/genu/nuxt-upload-kit/commit/cb02d67))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.18
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.17...v0.1.18)
