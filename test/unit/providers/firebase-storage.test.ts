@@ -235,31 +235,31 @@ describe("providers", () => {
     })
 
     describe("storageKey round-trip contract", () => {
-      it("storageKey should equal file.id for consistent round-trip retrieval", () => {
-        // When using the path option (e.g., path: "uploads/images"), Firebase's
-        // buildPath() prepends this to the fileId. The storageKey must be the original
-        // file.id (not fullPath) so getRemoteFile can correctly build the full path.
+      it("storageKey should be the full path (options.path + filename)", () => {
+        // The storageKey is now the FULL path, making it self-contained and portable.
         //
         // Example:
         // - path option: "uploads/images"
         // - file.id: "abc.jpg"
-        // - Full path in storage: "uploads/images/abc.jpg"
-        // - storageKey returned: "abc.jpg" (file.id, not fullPath)
-        // - getRemoteFile("abc.jpg") -> getStorageRef("abc.jpg") -> "uploads/images/abc.jpg"
+        // - storageKey returned: "uploads/images/abc.jpg" (full path)
+        // - getRemoteFile("uploads/images/abc.jpg") resolves correctly
+        //
+        // After upload, file.id is automatically updated to match storageKey.
+        const optionsPath = "uploads/images"
         const fileId = "my-image.jpg"
 
         const uploadResult = {
           url: "https://firebasestorage.googleapis.com/v0/b/bucket/o/uploads%2Fimages%2Fmy-image.jpg",
-          storageKey: fileId, // file.id, not "uploads/images/my-image.jpg"
+          storageKey: `${optionsPath}/${fileId}`, // Full path
           bucket: "my-bucket.appspot.com",
         }
 
-        expect(uploadResult.storageKey).toBe(fileId)
-        expect(uploadResult.storageKey).not.toContain("/")
+        expect(uploadResult.storageKey).toBe("uploads/images/my-image.jpg")
+        expect(uploadResult.storageKey).toContain("/")
       })
 
-      it("getRemoteFile uploadResult should use the same fileId passed in", () => {
-        const fileId = "my-file.jpg"
+      it("getRemoteFile should accept and return the full storageKey", () => {
+        const fullStorageKey = "uploads/images/my-file.jpg"
 
         const remoteFileResult = {
           size: 1024,
@@ -267,12 +267,25 @@ describe("providers", () => {
           remoteUrl: "https://firebasestorage.googleapis.com/...",
           uploadResult: {
             url: "https://firebasestorage.googleapis.com/...",
-            storageKey: fileId,
+            storageKey: fullStorageKey, // Same as input
             bucket: "my-bucket.appspot.com",
           },
         }
 
-        expect(remoteFileResult.uploadResult.storageKey).toBe(fileId)
+        expect(remoteFileResult.uploadResult.storageKey).toBe(fullStorageKey)
+      })
+
+      it("storageKey should just be filename when no path option", () => {
+        // When no options.path is specified, storageKey equals the filename
+        const fileId = "my-file.jpg"
+
+        const uploadResult = {
+          url: "https://firebasestorage.googleapis.com/v0/b/bucket/o/my-file.jpg",
+          storageKey: fileId,
+          bucket: "my-bucket.appspot.com",
+        }
+
+        expect(uploadResult.storageKey).toBe("my-file.jpg")
       })
     })
 

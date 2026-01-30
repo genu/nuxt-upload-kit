@@ -2,15 +2,22 @@ import { defineStorageAdapter } from "../../types"
 
 export interface S3Options {
   /**
+   * Optional path prefix (folder) for uploaded files
+   * @example "uploads/images"
+   */
+  path?: string
+
+  /**
    * Function to get a presigned URL for uploading a file
    * Your backend should generate this using AWS SDK's getSignedUrl
+   * The storageKey parameter is the full path (path + filename)
    *
    * @example
    * ```typescript
-   * getPresignedUploadUrl: async (fileId, contentType) => {
+   * getPresignedUploadUrl: async (storageKey, contentType) => {
    *   const response = await fetch('/api/s3/presign', {
    *     method: 'POST',
-   *     body: JSON.stringify({ key: fileId, contentType })
+   *     body: JSON.stringify({ key: storageKey, contentType })
    *   })
    *   const { uploadUrl, publicUrl } = await response.json()
    *   return { uploadUrl, publicUrl }
@@ -18,7 +25,7 @@ export interface S3Options {
    * ```
    */
   getPresignedUploadUrl: (
-    fileId: string,
+    storageKey: string,
     contentType: string,
     metadata: { fileName: string; fileSize: number },
   ) => Promise<{
@@ -31,14 +38,16 @@ export interface S3Options {
   /**
    * Optional function to get a presigned URL for downloading/reading a file
    * Required if you want to use getRemoteFile hook
+   * The storageKey parameter is the full path (path + filename)
    */
-  getPresignedDownloadUrl?: (fileId: string) => Promise<string>
+  getPresignedDownloadUrl?: (storageKey: string) => Promise<string>
 
   /**
    * Optional function to delete a file
    * Your backend should handle the actual deletion
+   * The storageKey parameter is the full path (path + filename)
    */
-  deleteFile?: (fileId: string) => Promise<void>
+  deleteFile?: (storageKey: string) => Promise<void>
 
   /**
    * Number of retry attempts for failed operations
@@ -88,6 +97,18 @@ export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options
   const initialRetryDelay = options.retryDelay ?? 1000
 
   /**
+   * Build the full storage key for a file.
+   * Combines: options.path + filename
+   */
+  const buildFullStorageKey = (filename: string): string => {
+    if (options.path) {
+      const cleanPath = options.path.replace(/^\/+/, "").replace(/\/+$/, "")
+      return `${cleanPath}/${filename}`
+    }
+    return filename
+  }
+
+  /**
    * Retry an async operation with exponential backoff
    */
   async function withRetry<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
@@ -131,8 +152,11 @@ export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options
         }
 
         return withRetry(async () => {
+          // Build full storage key upfront
+          const storageKey = buildFullStorageKey(file.id)
+
           // Get presigned URL from backend
-          const { uploadUrl, publicUrl } = await options.getPresignedUploadUrl(file.id, file.mimeType, {
+          const { uploadUrl, publicUrl } = await options.getPresignedUploadUrl(storageKey, file.mimeType, {
             fileName: file.name,
             fileSize: file.size,
           })
@@ -142,22 +166,23 @@ export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options
 
           return {
             url: publicUrl,
-            storageKey: file.id,
+            storageKey,
             etag,
           } satisfies S3UploadResult
         }, `Upload file "${file.name}"`)
       },
 
       /**
-       * Get remote file metadata
+       * Get remote file metadata.
+       * Expects the full storageKey (e.g., "uploads/images/filename.jpg").
        */
-      async getRemoteFile(fileId, _context) {
+      async getRemoteFile(storageKey, _context) {
         if (!options.getPresignedDownloadUrl) {
           throw new Error("[S3 Storage] getPresignedDownloadUrl is required to fetch remote files")
         }
 
         return withRetry(async () => {
-          const downloadUrl = await options.getPresignedDownloadUrl!(fileId)
+          const downloadUrl = await options.getPresignedDownloadUrl!(storageKey)
 
           // HEAD request to get file metadata
           const response = await fetch(downloadUrl, { method: "HEAD" })
@@ -170,25 +195,35 @@ export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options
             size: Number.parseInt(response.headers.get("content-length") || "0", 10),
             mimeType: response.headers.get("content-type") || "application/octet-stream",
             remoteUrl: downloadUrl,
-            // Include uploadResult for consistency with newly uploaded files
             uploadResult: {
               url: downloadUrl,
-              storageKey: fileId,
+              storageKey,
             } satisfies S3UploadResult,
           }
-        }, `Get remote file "${fileId}"`)
+        }, `Get remote file "${storageKey}"`)
       },
 
       /**
-       * Delete file from S3
+       * Delete file from S3.
+       * Uses file.storageKey (the full path in storage).
        */
       async remove(file, _context) {
         if (!options.deleteFile) {
           throw new Error("[S3 Storage] deleteFile callback is required to delete files")
         }
 
+        // Use storageKey for deletion - this is set after upload or from initialFiles
+        const storageKey = file.storageKey
+        if (!storageKey) {
+          // File was never uploaded to storage - nothing to delete
+          if (import.meta.dev) {
+            console.debug(`[S3 Storage] Skipping delete for file "${file.name}" - no storageKey`)
+          }
+          return
+        }
+
         return withRetry(async () => {
-          await options.deleteFile!(file.id)
+          await options.deleteFile!(storageKey)
         }, `Delete file "${file.name}"`)
       },
     },

@@ -1,5 +1,19 @@
-import type { PluginContext, UploadFile, FileError, UploadOptions } from "./types"
+import { isRef, toValue, watch } from "vue"
+import type { PluginContext, UploadFile, FileError, UploadOptions, InitialFileInput } from "./types"
 import type { Emitter } from "mitt"
+
+/**
+ * Get file extension from filename
+ */
+export function getExtension(fullFileName: string): string {
+  const lastDot = fullFileName.lastIndexOf(".")
+
+  if (lastDot === -1 || lastDot === fullFileName.length - 1) {
+    throw new Error("Invalid file name")
+  }
+
+  return fullFileName.slice(lastDot + 1).toLocaleLowerCase()
+}
 
 /**
  * Create a plugin context object with consistent structure
@@ -79,5 +93,56 @@ export function cleanupObjectURLs(urlMap: Map<string, string>, fileId?: string):
       URL.revokeObjectURL(url)
     }
     urlMap.clear()
+  }
+}
+
+/**
+ * Setup initial files from the initialFiles option
+ * Handles both static values and reactive refs with deferred initialization
+ */
+export function setupInitialFiles<TUploadResult>({
+  initialFiles,
+  files,
+  isReady,
+  emitter,
+  initializeExistingFiles,
+}: {
+  initialFiles: UploadOptions["initialFiles"]
+  files: { value: UploadFile<TUploadResult>[] }
+  isReady: { value: boolean }
+  emitter: { emit: (type: string, data: unknown) => void }
+  initializeExistingFiles: (files: InitialFileInput[]) => Promise<void>
+}) {
+  if (initialFiles === undefined) return
+
+  let isInitialized = false
+
+  const doInitialize = async (value: string | string[] | undefined) => {
+    if (isInitialized || !value || files.value.length > 0) return
+
+    const paths = Array.isArray(value) ? value : [value]
+    if (paths.length > 0 && paths.every(Boolean)) {
+      isInitialized = true
+      try {
+        await initializeExistingFiles(paths.map((storageKey) => ({ storageKey })))
+        isReady.value = true
+        emitter.emit("initialFiles:loaded", files.value)
+      } catch (error) {
+        isReady.value = true
+        emitter.emit("initialFiles:error", error)
+      }
+    } else {
+      isReady.value = true
+    }
+  }
+
+  if (isRef(initialFiles)) {
+    watch(
+      () => toValue(initialFiles),
+      (newValue) => doInitialize(newValue),
+      { immediate: true },
+    )
+  } else {
+    doInitialize(initialFiles)
   }
 }

@@ -37,8 +37,27 @@ export type FileSource = "local" | "storage" | "instagram" | "dropbox" | "google
  * Base properties shared by both local and remote upload files
  */
 export interface BaseUploadFile<TUploadResult = any> {
-  /** Unique identifier for the file */
+  /** Unique identifier for the file (stable, never changes after creation) */
   id: string
+
+  /**
+   * Storage key/path after upload (what you store in your database)
+   *
+   * - undefined before upload
+   * - Set after successful upload to the full path in storage
+   * - Use this to look up files later with initialFiles or getRemoteFile()
+   *
+   * @example
+   * ```typescript
+   * // After upload completes:
+   * const storageKey = file.storageKey // "uploads/images/abc123.jpg"
+   * await saveToDatabase({ imageKey: storageKey })
+   *
+   * // Later, to reload:
+   * useUploadKit({ initialFiles: ['uploads/images/abc123.jpg'] })
+   * ```
+   */
+  storageKey?: string
 
   /** Original filename (e.g., "vacation-photo.jpg") */
   name: string
@@ -177,14 +196,6 @@ export interface RemoteUploadFile<TUploadResult = any> extends BaseUploadFile<TU
  * ```
  */
 export type UploadFile<TUploadResult = any> = LocalUploadFile<TUploadResult> | RemoteUploadFile<TUploadResult>
-
-// User callback types
-export type UploadFn<TUploadResult = any> = (
-  file: UploadFile<TUploadResult>,
-  onProgress: (progress: number) => void,
-) => Promise<TUploadResult>
-
-export type GetRemoteFileFn = (fileId: string) => Promise<MinimumRemoteFileAttributes>
 
 // Configuration
 export interface UploadOptions {
@@ -620,3 +631,9 @@ export type MinimumRemoteFileAttributes<TUploadResult = any> = {
    */
   uploadResult?: TUploadResult
 }
+
+/**
+ * Input for initializing existing files from storage.
+ * Requires `storageKey` (which is optional in BaseUploadFile since it's set after upload).
+ */
+export type InitialFileInput = Required<Pick<BaseUploadFile, "storageKey">>

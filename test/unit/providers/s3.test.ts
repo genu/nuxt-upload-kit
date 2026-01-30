@@ -90,6 +90,15 @@ describe("providers", () => {
 
         expect(plugin).toBeDefined()
       })
+
+      it("should accept optional path configuration", () => {
+        const plugin = PluginS3({
+          getPresignedUploadUrl: vi.fn(),
+          path: "uploads/images",
+        })
+
+        expect(plugin).toBeDefined()
+      })
     })
 
     describe("upload hook", () => {
@@ -166,6 +175,33 @@ describe("providers", () => {
         expect(result).toHaveProperty("storageKey")
         expect(result.url).toBe("https://bucket.s3.amazonaws.com/uploads/file.jpg")
         expect(result.storageKey).toBe("my-file-id")
+      })
+
+      it("should include path prefix in storageKey when path option is set", async () => {
+        const getPresignedUploadUrl = vi.fn().mockResolvedValue({
+          uploadUrl: "https://bucket.s3.amazonaws.com/uploads/images/file.jpg?signature=xxx",
+          publicUrl: "https://bucket.s3.amazonaws.com/uploads/images/file.jpg",
+        })
+
+        const plugin = PluginS3({
+          getPresignedUploadUrl,
+          path: "uploads/images",
+        })
+
+        const file = createMockLocalUploadFile({ id: "my-file-id.jpg" })
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        const result = await plugin.hooks.upload(file, context)
+
+        expect(result.storageKey).toBe("uploads/images/my-file-id.jpg")
+        expect(getPresignedUploadUrl).toHaveBeenCalledWith(
+          "uploads/images/my-file-id.jpg", // Full storageKey
+          expect.any(String),
+          expect.any(Object),
+        )
       })
     })
 
@@ -244,7 +280,7 @@ describe("providers", () => {
         await expect(plugin.hooks.remove!(file, context)).rejects.toThrow("deleteFile callback is required to delete files")
       })
 
-      it("should call deleteFile with file id", async () => {
+      it("should call deleteFile with storageKey", async () => {
         const deleteFile = vi.fn().mockResolvedValue(undefined)
 
         const plugin = PluginS3({
@@ -252,12 +288,31 @@ describe("providers", () => {
           deleteFile,
         })
 
-        const file = createMockLocalUploadFile({ id: "file-to-delete" })
+        // File with storageKey set (as it would be after upload)
+        const file = createMockLocalUploadFile({ id: "local-id", storageKey: "uploads/file-to-delete.jpg" })
         const context = createMockPluginContext()
 
         await plugin.hooks.remove!(file, context)
 
-        expect(deleteFile).toHaveBeenCalledWith("file-to-delete")
+        expect(deleteFile).toHaveBeenCalledWith("uploads/file-to-delete.jpg")
+      })
+
+      it("should skip deletion if file has no storageKey", async () => {
+        const deleteFile = vi.fn().mockResolvedValue(undefined)
+
+        const plugin = PluginS3({
+          getPresignedUploadUrl: vi.fn(),
+          deleteFile,
+        })
+
+        // File without storageKey (not yet uploaded)
+        const file = createMockLocalUploadFile({ id: "local-id" })
+        const context = createMockPluginContext()
+
+        await plugin.hooks.remove!(file, context)
+
+        // Should not call deleteFile since no storageKey
+        expect(deleteFile).not.toHaveBeenCalled()
       })
     })
 
@@ -303,35 +358,56 @@ describe("providers", () => {
     })
 
     describe("storageKey round-trip contract", () => {
-      it("storageKey should equal file.id for consistent round-trip retrieval", () => {
-        // The storageKey must equal file.id so it can be passed directly to getRemoteFile.
-        // The backend receives file.id when generating presigned URLs, so using file.id
-        // as storageKey ensures the same identifier works for both upload and retrieval.
+      it("storageKey should be the full path (options.path + filename)", () => {
+        // The storageKey is now the FULL path, making it self-contained and portable.
+        //
+        // Example:
+        // - path option: "uploads"
+        // - file.id: "my-unique-file-id.jpg"
+        // - storageKey returned: "uploads/my-unique-file-id.jpg" (full path)
+        // - getRemoteFile("uploads/my-unique-file-id.jpg") resolves correctly
+        //
+        // After upload, file.id is automatically updated to match storageKey.
+        const optionsPath = "uploads"
         const fileId = "my-unique-file-id.jpg"
 
         const uploadResult = {
           url: "https://bucket.s3.amazonaws.com/uploads/my-unique-file-id.jpg",
-          storageKey: fileId,
+          storageKey: `${optionsPath}/${fileId}`, // Full path
           etag: "abc123",
         }
 
-        expect(uploadResult.storageKey).toBe(fileId)
+        expect(uploadResult.storageKey).toBe("uploads/my-unique-file-id.jpg")
+        expect(uploadResult.storageKey).toContain("/")
       })
 
-      it("getRemoteFile uploadResult should use the same fileId passed in", () => {
-        const fileId = "my-file.jpg"
+      it("getRemoteFile should accept and return the full storageKey", () => {
+        const fullStorageKey = "uploads/my-file.jpg"
 
         const remoteFileResult = {
           size: 1024,
           mimeType: "image/jpeg",
-          remoteUrl: "https://bucket.s3.amazonaws.com/my-file.jpg",
+          remoteUrl: "https://bucket.s3.amazonaws.com/uploads/my-file.jpg",
           uploadResult: {
-            url: "https://bucket.s3.amazonaws.com/my-file.jpg",
-            storageKey: fileId,
+            url: "https://bucket.s3.amazonaws.com/uploads/my-file.jpg",
+            storageKey: fullStorageKey, // Same as input
           },
         }
 
-        expect(remoteFileResult.uploadResult.storageKey).toBe(fileId)
+        expect(remoteFileResult.uploadResult.storageKey).toBe(fullStorageKey)
+      })
+
+      it("storageKey should just be filename when no path option", () => {
+        // When no options.path is specified, storageKey equals the filename
+        const fileId = "my-file.jpg"
+
+        const uploadResult = {
+          url: "https://bucket.s3.amazonaws.com/my-file.jpg",
+          storageKey: fileId,
+          etag: "abc123",
+        }
+
+        expect(uploadResult.storageKey).toBe("my-file.jpg")
       })
     })
 

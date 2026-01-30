@@ -1,9 +1,11 @@
+import { vi } from "vitest"
 import type {
   LocalUploadFile,
   RemoteUploadFile,
   UploadFile,
   PluginContext,
   UploadOptions,
+  StoragePlugin,
 } from "../../src/runtime/composables/useUploadKit/types"
 
 /**
@@ -31,8 +33,10 @@ export function createMockBlob(size: number = 1024, type: string = "image/jpeg")
 /**
  * Create a mock LocalUploadFile for testing
  */
-export function createMockLocalUploadFile(overrides: Partial<LocalUploadFile> = {}): LocalUploadFile {
+export function createMockLocalUploadFile(overrides: Partial<LocalUploadFile> & { storageKey?: string } = {}): LocalUploadFile {
   const file = createMockFile(overrides.name || "test-file.jpg", overrides.size || 1024, overrides.mimeType || "image/jpeg")
+
+  const { storageKey, ...rest } = overrides
 
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`,
@@ -44,7 +48,8 @@ export function createMockLocalUploadFile(overrides: Partial<LocalUploadFile> = 
     source: "local",
     data: file,
     meta: {},
-    ...overrides,
+    storageKey,
+    ...rest,
   }
 }
 
@@ -68,9 +73,21 @@ export function createMockRemoteUploadFile(overrides: Partial<RemoteUploadFile> 
 }
 
 /**
- * Create a mock PluginContext for testing
+ * Create a mock PluginContext for testing.
+ * Use the generic parameter to get typed emit calls in tests.
+ *
+ * @example
+ * // For type-safe emit assertions:
+ * const context = createMockPluginContext<ImageCompressorEvents>()
+ * expect(context.emit).toHaveBeenCalledWith("skip", { file, reason: "..." })
+ *
+ * // Or without types (emit accepts any):
+ * const context = createMockPluginContext()
  */
-export function createMockPluginContext(files: UploadFile[] = [], options: UploadOptions = {}): PluginContext {
+export function createMockPluginContext<TEvents extends Record<string, any> = Record<string, any>>(
+  files: UploadFile[] = [],
+  options: UploadOptions = {},
+): PluginContext<TEvents> {
   return {
     files,
     options,
@@ -171,4 +188,35 @@ export function createMockFiles(count: number, _baseOptions: Partial<File> = {})
   return Array.from({ length: count }, (_, i) =>
     createMockFile(`test-file-${i + 1}.jpg`, 1024 * (i + 1), "image/jpeg", Date.now() - i * 1000),
   )
+}
+
+/**
+ * Create a mock storage plugin for testing
+ */
+export function createMockStoragePlugin(options?: {
+  uploadFn?: (file: UploadFile, onProgress: (p: number) => void) => Promise<{ url: string; storageKey?: string }>
+  getRemoteFileFn?: (storageKey: string) => Promise<{ size: number; mimeType: string; remoteUrl: string }>
+  removeFn?: (file: UploadFile) => Promise<void>
+}): StoragePlugin {
+  const {
+    uploadFn = async () => ({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
+    getRemoteFileFn = async (storageKey: string) => ({
+      size: 1024,
+      mimeType: "image/jpeg",
+      remoteUrl: `https://storage.example.com/${storageKey}`,
+    }),
+    removeFn,
+  } = options || {}
+
+  return {
+    id: "mock-storage",
+    hooks: {
+      upload: vi.fn(async (file: UploadFile, context: { onProgress: (p: number) => void }) => {
+        const result = await uploadFn(file, context.onProgress)
+        return result
+      }),
+      getRemoteFile: vi.fn(async (storageKey: string) => getRemoteFileFn(storageKey)),
+      ...(removeFn ? { remove: vi.fn(async (file: UploadFile) => removeFn(file)) } : {}),
+    },
+  }
 }

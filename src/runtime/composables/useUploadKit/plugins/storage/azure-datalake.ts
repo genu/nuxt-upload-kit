@@ -72,6 +72,33 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
   // Cache to store directories we've already checked/created to avoid redundant API calls
   const directoryCheckedCache = new Set<string>()
 
+  /**
+   * Extract the base path from a SAS URL.
+   * SAS URL format: https://{account}.blob.core.windows.net/{container}/{basePath}?sig=...
+   * Returns the path after the container (e.g., "orgId" or "orgId/subdir")
+   */
+  const getBasePathFromSasUrl = (url: string): string => {
+    try {
+      const parsed = new URL(url)
+      // pathname is like /{container}/{basePath}
+      const parts = parsed.pathname.split("/").filter(Boolean)
+      // Skip container (first part), return the rest joined
+      return parts.slice(1).join("/")
+    } catch {
+      return ""
+    }
+  }
+
+  /**
+   * Build the full storage key for a file.
+   * Combines: basePath (from SAS URL) + options.path + filename
+   */
+  const buildFullStorageKey = (filename: string): string => {
+    const basePath = getBasePathFromSasUrl(sasURL.value)
+    const parts = [basePath, options.path, filename].filter(Boolean)
+    return parts.join("/")
+  }
+
   // Retry configuration
   const maxRetries = options.retries ?? 3
   const initialRetryDelay = options.retryDelay ?? 1000
@@ -139,9 +166,10 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
   }
 
   /**
-   * Get file client for a specific blob
+   * Get file client for a specific blob.
+   * Expects the full blob path (e.g., "basePath/subdir/filename.jpg").
    */
-  const getFileClient = async (blobName: string) => {
+  const getFileClient = async (fullBlobPath: string) => {
     // Smart Refresh: Only fetch if empty or expired
     if (options.getSASUrl && isTokenExpired(sasURL.value)) {
       if (!refreshPromise) {
@@ -153,31 +181,35 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
       sasURL.value = await refreshPromise
     }
 
+    // Split path into directory and filename
+    const pathParts = fullBlobPath.split("/")
+    const filename = pathParts.pop()!
+    const dirPath = pathParts.join("/")
+
     let dir = new DataLakeDirectoryClient(sasURL.value)
 
-    // Navigate to subdirectory if path is specified
-    if (options.path) {
-      const cleanPath = options.path.replace(/^\/+|\/+$/g, "") // trim leading/trailing slashes
-      dir = dir.getSubdirectoryClient(cleanPath)
+    // Navigate to subdirectory if the path contains directories
+    if (dirPath) {
+      dir = dir.getSubdirectoryClient(dirPath)
 
       // Only attempt creation if enabled (default true) AND not already checked
       const shouldCreateDir = options.autoCreateDirectory ?? true
 
-      if (shouldCreateDir && !directoryCheckedCache.has(cleanPath)) {
+      if (shouldCreateDir && !directoryCheckedCache.has(dirPath)) {
         // Create directory if it doesn't exist
         try {
           await dir.createIfNotExists()
-          directoryCheckedCache.add(cleanPath)
+          directoryCheckedCache.add(dirPath)
         } catch (error) {
           // Ignore if already exists
           if (import.meta.dev) {
-            console.debug(`Azure directory already exists or couldn't be created: ${cleanPath}`, error)
+            console.debug(`Azure directory already exists or couldn't be created: ${dirPath}`, error)
           }
         }
       }
     }
 
-    return dir.getFileClient(blobName)
+    return dir.getFileClient(filename)
   }
 
   return {
@@ -194,7 +226,9 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
         }
 
         return withRetry(async () => {
-          const fileClient = await getFileClient(file.id)
+          // Build full storage key upfront
+          const storageKey = buildFullStorageKey(file.id)
+          const fileClient = await getFileClient(storageKey)
 
           await fileClient.upload(file.data, {
             metadata: {
@@ -215,41 +249,49 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
 
           return {
             url: fileClient.url,
-            // Return just the file ID (filename), not the full path from container root
-            // This ensures the storageKey can be used directly with getRemoteFile
-            storageKey: file.id,
+            storageKey,
           } satisfies AzureUploadResult
         }, `Upload file "${file.name}"`)
       },
 
       /**
-       * Get remote file metadata from Azure
+       * Get remote file metadata from Azure.
+       * Expects the full storageKey (e.g., "basePath/subdir/filename.jpg").
        */
-      async getRemoteFile(fileId, _context) {
+      async getRemoteFile(storageKey, _context) {
         return withRetry(async () => {
-          const fileClient = await getFileClient(fileId)
+          const fileClient = await getFileClient(storageKey)
           const properties = await fileClient.getProperties()
 
           return {
             size: properties.contentLength || 0,
             mimeType: properties.contentType || "application/octet-stream",
             remoteUrl: fileClient.url,
-            // Include uploadResult for consistency with newly uploaded files
             uploadResult: {
               url: fileClient.url,
-              // Return the fileId as passed in, not the full path from container root
-              storageKey: fileId,
+              storageKey,
             } satisfies AzureUploadResult,
           }
-        }, `Get remote file "${fileId}"`)
+        }, `Get remote file "${storageKey}"`)
       },
 
       /**
-       * Delete file from Azure Blob Storage
+       * Delete file from Azure Blob Storage.
+       * Uses file.storageKey (the full path in storage).
        */
       async remove(file, _context) {
+        // Use storageKey for deletion - this is set after upload or from initialFiles
+        const storageKey = file.storageKey
+        if (!storageKey) {
+          // File was never uploaded to storage - nothing to delete
+          if (import.meta.dev) {
+            console.debug(`[Azure Storage] Skipping delete for file "${file.name}" - no storageKey`)
+          }
+          return
+        }
+
         return withRetry(async () => {
-          const fileClient = await getFileClient(file.id)
+          const fileClient = await getFileClient(storageKey)
           await fileClient.deleteIfExists()
         }, `Delete file "${file.name}"`)
       },

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ref } from "vue"
-import { createMockFile, wait } from "../helpers"
+import { createMockFile, wait, createMockStoragePlugin } from "../helpers"
 import type { StoragePlugin } from "../../src/runtime/composables/useUploadKit/types"
 
 // Mock Vue's onBeforeUnmount since we're not in a component context
@@ -200,15 +200,19 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit({ storage: storagePlugin })
 
       // Add a remote file using initializeExistingFiles
-      await uploader.initializeExistingFiles([{ id: "remote-1" }])
+      // The passed-in id becomes storageKey, file gets a generated id
+      await uploader.initializeExistingFiles([{ storageKey: "remote-1" }])
 
       expect(uploader.files.value).toHaveLength(1)
       expect(uploader.files.value[0]!.remoteUrl).toBe("https://storage.example.com/remote-1.jpg")
+      expect(uploader.files.value[0]!.storageKey).toBe("remote-1")
 
-      await uploader.removeFile("remote-1")
+      // Use the generated file.id to remove
+      const fileId = uploader.files.value[0]!.id
+      await uploader.removeFile(fileId)
 
       expect(removeHook).toHaveBeenCalledTimes(1)
-      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ id: "remote-1" }), expect.any(Object))
+      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "remote-1" }), expect.any(Object))
       expect(uploader.files.value).toHaveLength(0)
     })
 
@@ -230,9 +234,11 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit({ storage: storagePlugin })
 
       // Add a remote file using initializeExistingFiles
-      await uploader.initializeExistingFiles([{ id: "remote-1" }])
+      await uploader.initializeExistingFiles([{ storageKey: "remote-1" }])
 
-      await uploader.removeFile("remote-1", { deleteFromStorage: "never" })
+      // Use the generated file.id to remove
+      const fileId = uploader.files.value[0]!.id
+      await uploader.removeFile(fileId, { deleteFromStorage: "never" })
 
       expect(removeHook).not.toHaveBeenCalled()
       expect(uploader.files.value).toHaveLength(0)
@@ -242,7 +248,7 @@ describe("useUploadKit", () => {
       const removeHook = vi.fn()
       const uploadHook = vi.fn().mockResolvedValue({
         url: "https://storage.example.com/uploaded.jpg",
-        storageKey: "uploaded.jpg",
+        storageKey: "uploads/uploaded.jpg",
       })
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
@@ -260,19 +266,23 @@ describe("useUploadKit", () => {
       const uploader = useUploadKit({ storage: storagePlugin })
 
       // Add a remote file (source: "storage") - simulates pre-populated file
-      await uploader.initializeExistingFiles([{ id: "existing-file" }])
+      await uploader.initializeExistingFiles([{ storageKey: "existing-file" }])
+      const remoteFileId = uploader.files.value[0]!.id
 
       // Add and upload a local file (source: "local")
       await uploader.addFile(createMockFile("new-upload.jpg"))
-      const localFileId = uploader.files.value.find((f) => f.source === "local")!.id
 
-      // Upload to set remoteUrl
+      // Upload to set remoteUrl and storageKey
       await uploader.upload()
 
       expect(uploader.files.value).toHaveLength(2)
 
+      // Get the local file's id (id stays stable after upload)
+      const localFile = uploader.files.value.find((f) => f.source === "local")!
+      const localFileId = localFile.id
+
       // Remove the pre-populated file with "local-only" - should NOT delete from storage
-      await uploader.removeFile("existing-file", { deleteFromStorage: "local-only" })
+      await uploader.removeFile(remoteFileId, { deleteFromStorage: "local-only" })
       expect(removeHook).not.toHaveBeenCalled()
 
       // Remove the locally uploaded file with "local-only" - SHOULD delete from storage
@@ -444,11 +454,11 @@ describe("useUploadKit", () => {
   })
 
   describe("upload", () => {
-    it("should upload files with custom upload function", async () => {
-      const uploader = useUploadKit()
+    it("should upload files with storage plugin", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+      const storage = createMockStoragePlugin({ uploadFn: async (file, onProgress) => uploadFn(file, onProgress) })
+      const uploader = useUploadKit({ storage })
 
-      uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))
       await uploader.upload()
 
@@ -457,11 +467,11 @@ describe("useUploadKit", () => {
     })
 
     it("should emit upload:start and upload:complete events", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const startHandler = vi.fn()
       const completeHandler = vi.fn()
 
-      uploader.onUpload(vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" }))
       uploader.on("upload:start", startHandler)
       uploader.on("upload:complete", completeHandler)
 
@@ -473,10 +483,10 @@ describe("useUploadKit", () => {
     })
 
     it("should only upload files with 'waiting' status", async () => {
-      const uploader = useUploadKit()
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
+      const storage = createMockStoragePlugin({ uploadFn: async (file, onProgress) => uploadFn(file, onProgress) })
+      const uploader = useUploadKit({ storage })
 
-      uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))
       await uploader.upload() // First upload
       await uploader.upload() // Second upload - should not upload again
@@ -485,11 +495,15 @@ describe("useUploadKit", () => {
     })
 
     it("should handle upload errors gracefully", async () => {
-      const uploader = useUploadKit()
-      const errorHandler = vi.fn()
       const uploadError = new Error("Upload failed")
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          throw uploadError
+        },
+      })
+      const uploader = useUploadKit({ storage })
+      const errorHandler = vi.fn()
 
-      uploader.onUpload(vi.fn().mockRejectedValue(uploadError))
       uploader.on("file:error", errorHandler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -501,16 +515,17 @@ describe("useUploadKit", () => {
     })
 
     it("should call progress callback during upload", async () => {
-      const uploader = useUploadKit()
-      const progressHandler = vi.fn()
-
-      uploader.onUpload(async (file, onProgress) => {
-        onProgress(25)
-        onProgress(50)
-        onProgress(75)
-        onProgress(100)
-        return { url: "https://example.com/file.jpg" }
+      const storage = createMockStoragePlugin({
+        uploadFn: async (_file, onProgress) => {
+          onProgress(25)
+          onProgress(50)
+          onProgress(75)
+          onProgress(100)
+          return { url: "https://example.com/file.jpg" }
+        },
       })
+      const uploader = useUploadKit({ storage })
+      const progressHandler = vi.fn()
 
       uploader.on("upload:progress", progressHandler)
       await uploader.addFile(createMockFile("test.jpg"))
@@ -519,26 +534,94 @@ describe("useUploadKit", () => {
       expect(progressHandler).toHaveBeenCalledTimes(4)
     })
 
-    it("should throw error if no upload function configured", async () => {
+    it("should throw error if no storage plugin configured", async () => {
       const uploader = useUploadKit()
 
       await uploader.addFile(createMockFile("test.jpg"))
       await uploader.upload()
 
       expect(uploader.files.value[0]!.status).toBe("error")
-      expect(uploader.files.value[0]!.error?.message).toContain("No uploader configured")
+      expect(uploader.files.value[0]!.error?.message).toContain("Storage plugin")
+    })
+
+    it("should set file.storageKey after successful upload (id remains stable)", async () => {
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://storage.example.com/uploads/images/uploaded.jpg",
+            storageKey: "uploads/images/uploaded.jpg", // Full path storageKey
+          }),
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+      await uploader.addFile(createMockFile("test.jpg"))
+
+      const originalFileId = uploader.files.value[0]!.id
+      expect(originalFileId).toMatch(/\.jpg$/) // Original ID is filename with extension
+
+      await uploader.upload()
+
+      // id stays stable (doesn't change)
+      expect(uploader.files.value[0]!.id).toBe(originalFileId)
+      // storageKey is set to the full storage path
+      expect(uploader.files.value[0]!.storageKey).toBe("uploads/images/uploaded.jpg")
+    })
+
+    it("should keep original file.id if uploadResult has no storageKey", async () => {
+      // Storage plugin returns result without storageKey
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => ({ url: "https://example.com/file.jpg" }), // No storageKey
+      })
+      const uploader = useUploadKit({ storage })
+
+      await uploader.addFile(createMockFile("test.jpg"))
+      const originalFileId = uploader.files.value[0]!.id
+
+      await uploader.upload()
+
+      expect(uploader.files.value[0]!.id).toBe(originalFileId)
+      expect(uploader.files.value[0]!.storageKey).toBeUndefined()
+    })
+
+    it("should allow remove() to work correctly using storageKey after upload", async () => {
+      const removeHook = vi.fn()
+      const storagePlugin: StoragePlugin = {
+        id: "test-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://storage.example.com/uploads/uploaded.jpg",
+            storageKey: "uploads/uploaded.jpg",
+          }),
+          remove: removeHook,
+        },
+      }
+
+      const uploader = useUploadKit({ storage: storagePlugin })
+      await uploader.addFile(createMockFile("test.jpg"))
+      const originalFileId = uploader.files.value[0]!.id
+
+      await uploader.upload()
+
+      // After upload, file.id stays stable, storageKey is set
+      expect(uploader.files.value[0]!.id).toBe(originalFileId)
+      expect(uploader.files.value[0]!.storageKey).toBe("uploads/uploaded.jpg")
+
+      // Remove using file.id (internal identifier)
+      await uploader.removeFile(originalFileId)
+
+      expect(removeHook).toHaveBeenCalledTimes(1)
+      // Storage plugin receives file with storageKey set
+      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "uploads/uploaded.jpg" }), expect.any(Object))
+      expect(uploader.files.value).toHaveLength(0)
     })
   })
 
   describe("totalProgress", () => {
     it("should calculate total progress correctly", async () => {
-      const uploader = useUploadKit()
-      const progressCallbacks: ((p: number) => void)[] = []
-
-      uploader.onUpload(async (file, onProgress) => {
-        progressCallbacks.push(onProgress)
-        return { url: "https://example.com/file.jpg" }
-      })
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
 
       await uploader.addFile(createMockFile("test1.jpg"))
       await uploader.addFile(createMockFile("test2.jpg"))
@@ -643,8 +726,8 @@ describe("useUploadKit", () => {
 
     it("should auto-upload if autoUpload is enabled and shouldAutoUpload is undefined", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoUpload: true })
-      uploader.onUpload(uploadFn)
+      const storage = createMockStoragePlugin({ uploadFn: async (file, onProgress) => uploadFn(file, onProgress) })
+      const uploader = useUploadKit({ autoUpload: true, storage })
 
       // Set up listener before action that triggers upload
       const firstUpload = waitForUploadComplete(uploader)
@@ -664,15 +747,16 @@ describe("useUploadKit", () => {
 
   describe("initializeExistingFiles", () => {
     it("should initialize files from remote storage", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin({
+        getRemoteFileFn: async (storageKey) => ({
+          size: 2048,
+          mimeType: "image/png",
+          remoteUrl: `https://storage.example.com/${storageKey}`,
+        }),
+      })
+      const uploader = useUploadKit({ storage })
 
-      uploader.onGetRemoteFile(async (fileId) => ({
-        size: 2048,
-        mimeType: "image/png",
-        remoteUrl: `https://storage.example.com/${fileId}`,
-      }))
-
-      await uploader.initializeExistingFiles([{ id: "remote-1.png" }, { id: "remote-2.png" }])
+      await uploader.initializeExistingFiles([{ storageKey: "remote-1.png" }, { storageKey: "remote-2.png" }])
 
       expect(uploader.files.value).toHaveLength(2)
       expect(uploader.files.value[0]!.source).toBe("storage")
@@ -680,19 +764,19 @@ describe("useUploadKit", () => {
       expect(uploader.files.value[0]!.remoteUrl).toBe("https://storage.example.com/remote-1.png")
     })
 
-    it("should skip files without ID", async () => {
-      const uploader = useUploadKit()
-
-      uploader.onGetRemoteFile(async (fileId) => ({
-        size: 2048,
-        mimeType: "image/png",
-        remoteUrl: `https://storage.example.com/${fileId}`,
-      }))
+    it("should skip files without storageKey", async () => {
+      const storage = createMockStoragePlugin({
+        getRemoteFileFn: async (storageKey) => ({
+          size: 2048,
+          mimeType: "image/png",
+          remoteUrl: `https://storage.example.com/${storageKey}`,
+        }),
+      })
+      const uploader = useUploadKit({ storage })
 
       await uploader.initializeExistingFiles([
-        { id: "valid.png" },
-        { id: "" }, // Empty ID
-        {}, // No ID
+        { storageKey: "valid.png" },
+        { storageKey: "" }, // Empty storageKey
       ])
 
       expect(uploader.files.value).toHaveLength(1)
@@ -748,9 +832,9 @@ describe("useUploadKit", () => {
   describe("autoUpload option", () => {
     it("should auto-upload when autoUpload is true", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoUpload: true })
+      const storage = createMockStoragePlugin({ uploadFn: async (file, onProgress) => uploadFn(file, onProgress) })
+      const uploader = useUploadKit({ autoUpload: true, storage })
 
-      uploader.onUpload(uploadFn)
       const uploadComplete = waitForUploadComplete(uploader)
       await uploader.addFile(createMockFile("test.jpg"))
       await uploadComplete
@@ -760,9 +844,9 @@ describe("useUploadKit", () => {
 
     it("should not auto-upload when autoUpload is false", async () => {
       const uploadFn = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg" })
-      const uploader = useUploadKit({ autoUpload: false })
+      const storage = createMockStoragePlugin({ uploadFn: async (file, onProgress) => uploadFn(file, onProgress) })
+      const uploader = useUploadKit({ autoUpload: false, storage })
 
-      uploader.onUpload(uploadFn)
       await uploader.addFile(createMockFile("test.jpg"))
 
       // No event to wait for - upload should NOT happen (negative test)
@@ -773,21 +857,6 @@ describe("useUploadKit", () => {
   })
 
   describe("initialFiles option", () => {
-    // Helper to create a mock storage plugin with getRemoteFile
-    const createMockStoragePlugin = (getRemoteFileFn?: (fileId: string) => Promise<any>) => ({
-      id: "mock-storage",
-      hooks: {
-        upload: vi.fn().mockResolvedValue({ url: "https://example.com/uploaded.jpg" }),
-        getRemoteFile:
-          getRemoteFileFn ||
-          (async (fileId: string) => ({
-            size: 1024,
-            mimeType: "image/jpeg",
-            remoteUrl: `https://storage.example.com/${fileId}`,
-          })),
-      },
-    })
-
     /**
      * Helper to wait for initialFiles to load (event-based, more deterministic than wait())
      */
@@ -830,19 +899,25 @@ describe("useUploadKit", () => {
     it("should initialize files from static array and set isReady", async () => {
       const uploader = useUploadKit({
         initialFiles: ["file1.jpg", "file2.png"],
-        storage: createMockStoragePlugin(async (fileId) => ({
-          size: 2048,
-          mimeType: fileId.endsWith(".png") ? "image/png" : "image/jpeg",
-          remoteUrl: `https://storage.example.com/${fileId}`,
-        })),
+        storage: createMockStoragePlugin({
+          getRemoteFileFn: async (fileId) => ({
+            size: 2048,
+            mimeType: fileId.endsWith(".png") ? "image/png" : "image/jpeg",
+            remoteUrl: `https://storage.example.com/${fileId}`,
+          }),
+        }),
       })
 
       await waitForInitialFiles(uploader)
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(2)
-      expect(uploader.files.value[0]!.id).toBe("file1.jpg")
-      expect(uploader.files.value[1]!.id).toBe("file2.png")
+      // storageKey contains the storage path, id is auto-generated
+      expect(uploader.files.value[0]!.storageKey).toBe("file1.jpg")
+      expect(uploader.files.value[1]!.storageKey).toBe("file2.png")
+      // Name is extracted from storageKey
+      expect(uploader.files.value[0]!.name).toBe("file1.jpg")
+      expect(uploader.files.value[1]!.name).toBe("file2.png")
     })
 
     it("should initialize from single string value", async () => {
@@ -855,7 +930,7 @@ describe("useUploadKit", () => {
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(1)
-      expect(uploader.files.value[0]!.id).toBe("single-file.jpg")
+      expect(uploader.files.value[0]!.storageKey).toBe("single-file.jpg")
     })
 
     it("should initialize from reactive ref when value becomes available", async () => {
@@ -875,7 +950,7 @@ describe("useUploadKit", () => {
 
       expect(uploader.isReady.value).toBe(true)
       expect(uploader.files.value).toHaveLength(1)
-      expect(uploader.files.value[0]!.id).toBe("deferred-file.jpg")
+      expect(uploader.files.value[0]!.storageKey).toBe("deferred-file.jpg")
     })
 
     it("should emit initialFiles:loaded event on success", async () => {
@@ -889,15 +964,17 @@ describe("useUploadKit", () => {
       await waitForInitialFiles(uploader)
 
       expect(loadedHandler).toHaveBeenCalledTimes(1)
-      expect(loadedHandler).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: "file1.jpg" })]))
+      expect(loadedHandler).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ storageKey: "file1.jpg" })]))
     })
 
     it("should emit initialFiles:error event on failure and still set isReady", async () => {
       const errorHandler = vi.fn()
       const uploader = useUploadKit({
         initialFiles: ["file1.jpg"],
-        storage: createMockStoragePlugin(async () => {
-          throw new Error("Storage unavailable")
+        storage: createMockStoragePlugin({
+          getRemoteFileFn: async () => {
+            throw new Error("Storage unavailable")
+          },
         }),
       })
 
@@ -918,7 +995,7 @@ describe("useUploadKit", () => {
 
       const uploader = useUploadKit({
         initialFiles: filesRef,
-        storage: createMockStoragePlugin(getRemoteFileFn),
+        storage: createMockStoragePlugin({ getRemoteFileFn }),
       })
 
       // Set initial value after setup
@@ -933,7 +1010,7 @@ describe("useUploadKit", () => {
 
       // Should still have only the original file
       expect(uploader.files.value).toHaveLength(1)
-      expect(uploader.files.value[0]!.id).toBe("file1.jpg")
+      expect(uploader.files.value[0]!.storageKey).toBe("file1.jpg")
       expect(getRemoteFileFn).toHaveBeenCalledTimes(1)
     })
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { createMockFile } from "../../helpers"
+import { createMockFile, createMockStoragePlugin } from "../../helpers"
 
 // Mock Vue's onBeforeUnmount
 vi.mock("vue", async () => {
@@ -169,10 +169,14 @@ describe("events", () => {
     })
 
     it("should emit when upload fails", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          throw new Error("Upload failed")
+        },
+      })
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.reject(new Error("Upload failed")))
       uploader.on("file:error", handler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -190,10 +194,10 @@ describe("events", () => {
 
   describe("upload:start event", () => {
     it("should emit when upload begins", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("upload:start", handler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -204,10 +208,10 @@ describe("events", () => {
     })
 
     it("should include all files to be uploaded", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("upload:start", handler)
 
       await uploader.addFile(createMockFile("test1.jpg"))
@@ -221,10 +225,10 @@ describe("events", () => {
 
   describe("upload:complete event", () => {
     it("should emit when all uploads complete", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("upload:complete", handler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -242,17 +246,19 @@ describe("events", () => {
     })
 
     it("should only include successfully completed files", async () => {
-      const uploader = useUploadKit()
-      const handler = vi.fn()
       let callCount = 0
-
-      uploader.onUpload(() => {
-        callCount++
-        if (callCount === 2) {
-          return Promise.reject(new Error("Failed"))
-        }
-        return Promise.resolve({ url: "https://example.com/file.jpg" })
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          callCount++
+          if (callCount === 2) {
+            throw new Error("Failed")
+          }
+          return { url: "https://example.com/file.jpg" }
+        },
       })
+      const uploader = useUploadKit({ storage })
+      const handler = vi.fn()
+
       uploader.on("upload:complete", handler)
 
       await uploader.addFile(createMockFile("test1.jpg"))
@@ -267,16 +273,18 @@ describe("events", () => {
 
   describe("upload:progress event", () => {
     it("should emit during upload progress", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin({
+        uploadFn: async (_file, onProgress) => {
+          onProgress(25)
+          onProgress(50)
+          onProgress(75)
+          onProgress(100)
+          return { url: "https://example.com/file.jpg" }
+        },
+      })
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(async (file, onProgress) => {
-        onProgress(25)
-        onProgress(50)
-        onProgress(75)
-        onProgress(100)
-        return { url: "https://example.com/file.jpg" }
-      })
       uploader.on("upload:progress", handler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -292,15 +300,17 @@ describe("events", () => {
     })
 
     it("should report correct progress values", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin({
+        uploadFn: async (_file, onProgress) => {
+          onProgress(0)
+          onProgress(50)
+          onProgress(100)
+          return { url: "https://example.com/file.jpg" }
+        },
+      })
+      const uploader = useUploadKit({ storage })
       const progressValues: number[] = []
 
-      uploader.onUpload(async (file, onProgress) => {
-        onProgress(0)
-        onProgress(50)
-        onProgress(100)
-        return { url: "https://example.com/file.jpg" }
-      })
       uploader.on("upload:progress", ({ progress }) => {
         progressValues.push(progress)
       })
@@ -343,10 +353,10 @@ describe("events", () => {
 
   describe("files:uploaded event", () => {
     it("should emit when all files are complete", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("files:uploaded", handler)
 
       await uploader.addFile(createMockFile("test1.jpg"))
@@ -363,17 +373,19 @@ describe("events", () => {
     })
 
     it("should not emit if some files have errors", async () => {
-      const uploader = useUploadKit()
-      const handler = vi.fn()
       let callCount = 0
-
-      uploader.onUpload(() => {
-        callCount++
-        if (callCount === 2) {
-          return Promise.reject(new Error("Failed"))
-        }
-        return Promise.resolve({ url: "https://example.com/file.jpg" })
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          callCount++
+          if (callCount === 2) {
+            throw new Error("Failed")
+          }
+          return { url: "https://example.com/file.jpg" }
+        },
       })
+      const uploader = useUploadKit({ storage })
+      const handler = vi.fn()
+
       uploader.on("files:uploaded", handler)
 
       await uploader.addFile(createMockFile("test1.jpg"))
@@ -385,10 +397,10 @@ describe("events", () => {
     })
 
     it("should not emit if no files exist", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("files:uploaded", handler)
 
       await uploader.upload()
@@ -397,10 +409,10 @@ describe("events", () => {
     })
 
     it("should emit again after adding new files and uploading", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("files:uploaded", handler)
 
       // First batch
@@ -416,10 +428,10 @@ describe("events", () => {
     })
 
     it("should emit again after replaceFileData and upload", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin()
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      uploader.onUpload(() => Promise.resolve({ url: "https://example.com/file.jpg" }))
       uploader.on("files:uploaded", handler)
 
       await uploader.addFile(createMockFile("test.jpg"))
@@ -437,14 +449,15 @@ describe("events", () => {
 
   describe("files:uploaded race conditions", () => {
     it("should only emit once when concurrent upload() calls finish", async () => {
-      const uploader = useUploadKit()
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          return { url: "https://example.com/file.jpg" }
+        },
+      })
+      const uploader = useUploadKit({ storage })
       const handler = vi.fn()
 
-      // Create upload function with delay to simulate real upload
-      uploader.onUpload(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10))
-        return { url: "https://example.com/file.jpg" }
-      })
       uploader.on("files:uploaded", handler)
 
       await uploader.addFile(createMockFile("test1.jpg"))
@@ -458,13 +471,15 @@ describe("events", () => {
     })
 
     it("should handle autoUpload with rapid file additions", async () => {
-      const uploader = useUploadKit({ autoUpload: true })
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          return { url: "https://example.com/file.jpg" }
+        },
+      })
+      const uploader = useUploadKit({ autoUpload: true, storage })
       const handler = vi.fn()
 
-      uploader.onUpload(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 5))
-        return { url: "https://example.com/file.jpg" }
-      })
       uploader.on("files:uploaded", handler)
 
       // Add files rapidly - each will trigger upload() via autoUpload
@@ -483,17 +498,19 @@ describe("events", () => {
     })
 
     it("should not emit prematurely when one batch finishes but another is still uploading", async () => {
-      const uploader = useUploadKit()
+      let uploadDelay = 50
+      const storage = createMockStoragePlugin({
+        uploadFn: async () => {
+          const delay = uploadDelay
+          uploadDelay = 10 // Second batch uploads faster
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          return { url: "https://example.com/file.jpg" }
+        },
+      })
+      const uploader = useUploadKit({ storage })
       const filesUploadedHandler = vi.fn()
       const uploadCompleteHandler = vi.fn()
 
-      let uploadDelay = 50
-      uploader.onUpload(async () => {
-        const delay = uploadDelay
-        uploadDelay = 10 // Second batch uploads faster
-        await new Promise((resolve) => setTimeout(resolve, delay))
-        return { url: "https://example.com/file.jpg" }
-      })
       uploader.on("files:uploaded", filesUploadedHandler)
       uploader.on("upload:complete", uploadCompleteHandler)
 
@@ -542,7 +559,10 @@ describe("events", () => {
 
       expect(handler).toHaveBeenCalledTimes(1)
       expect(handler).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ id: "file1.jpg" }), expect.objectContaining({ id: "file2.jpg" })]),
+        expect.arrayContaining([
+          expect.objectContaining({ storageKey: "file1.jpg" }),
+          expect.objectContaining({ storageKey: "file2.jpg" }),
+        ]),
       )
     })
 
@@ -688,12 +708,13 @@ describe("events", () => {
     })
 
     it("upload:progress payload should contain file and progress", async () => {
-      const uploader = useUploadKit()
-
-      uploader.onUpload(async (file, onProgress) => {
-        onProgress(50)
-        return { url: "https://example.com/file.jpg" }
+      const storage = createMockStoragePlugin({
+        uploadFn: async (_file, onProgress) => {
+          onProgress(50)
+          return { url: "https://example.com/file.jpg" }
+        },
       })
+      const uploader = useUploadKit({ storage })
 
       uploader.on("upload:progress", (payload) => {
         expect(payload).toHaveProperty("file")
