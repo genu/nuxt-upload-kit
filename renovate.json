@@ -3,7 +3,7 @@
   "extends": [
     "config:recommended",
     ":dependencyDashboard",
-    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitTypeAll(deps)",
     ":label(dependencies)",
     ":disablePeerDependencies"
   ],
