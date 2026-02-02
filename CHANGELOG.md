@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.1.21
+
+[compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.20...v0.1.21)
+
+### 💅 Refactors
+
+- Remove retry logic and simplify upload handling in Azure Data Lake plugin ([7a09980](https://github.com/genu/nuxt-upload-kit/commit/7a09980))
+
+### 🏡 Chore
+
+- Dependency updates ([e724e59](https://github.com/genu/nuxt-upload-kit/commit/e724e59))
+
+### ❤️ Contributors
+
+- Eugen Istoc <eugenistoc@gmail.com>
+
 ## v0.1.20
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.19...v0.1.20)
