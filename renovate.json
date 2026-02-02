@@ -1,8 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "dependencyDashboard": true,
-  "labels": ["dependencies"],
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    ":label(dependencies)",
+    ":disablePeerDependencies"
+  ],
   "packageRules": [
     {
       "description": "Group Azure SDK packages",
