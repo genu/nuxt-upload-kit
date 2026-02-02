@@ -1,6 +1,49 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    ":label(dependencies)",
+    ":disablePeerDependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "Group Azure SDK packages",
+      "matchPackagePatterns": ["^@azure/"],
+      "groupName": "azure-sdk"
+    },
+    {
+      "description": "Group AWS SDK packages",
+      "matchPackagePatterns": ["^@aws-sdk/"],
+      "groupName": "aws-sdk"
+    },
+    {
+      "description": "Group Nuxt ecosystem packages",
+      "matchPackagePatterns": ["^@nuxt/", "^nuxt$", "^nuxi$"],
+      "groupName": "nuxt"
+    },
+    {
+      "description": "Group Vitest packages",
+      "matchPackagePatterns": ["^vitest$", "^@vitest/"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Group linting tools",
+      "matchPackagePatterns": ["^eslint", "^prettier"],
+      "groupName": "linting"
+    },
+    {
+      "description": "Group FFmpeg packages (pinned for compatibility)",
+      "matchPackagePatterns": ["^@ffmpeg/"],
+      "groupName": "ffmpeg",
+      "enabled": false
+    },
+    {
+      "description": "Automerge minor/patch devDependencies",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
   ]
 }
