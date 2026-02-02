@@ -38,19 +38,6 @@ export interface AzureDataLakeOptions {
    * @default true
    */
   autoCreateDirectory?: boolean
-
-  /**
-   * Number of retry attempts for failed operations
-   * @default 3
-   */
-  retries?: number
-
-  /**
-   * Initial delay between retries in milliseconds
-   * Uses exponential backoff: delay * (2 ^ attempt)
-   * @default 1000 (1 second)
-   */
-  retryDelay?: number
 }
 
 export interface AzureUploadResult {
@@ -99,46 +86,6 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
     return parts.join("/")
   }
 
-  // Retry configuration
-  const maxRetries = options.retries ?? 3
-  const initialRetryDelay = options.retryDelay ?? 1000
-
-  /**
-   * Retry an async operation with exponential backoff
-   */
-  async function withRetry<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
-    let lastError: Error | undefined
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation()
-      } catch (error) {
-        lastError = error as Error
-
-        // Don't retry on last attempt
-        if (attempt === maxRetries) {
-          break
-        }
-
-        // Calculate exponential backoff delay
-        const delay = initialRetryDelay * Math.pow(2, attempt)
-
-        if (import.meta.dev) {
-          console.warn(
-            `[Azure Storage] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}). ` + `Retrying in ${delay}ms...`,
-            error,
-          )
-        }
-
-        // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-
-    // All retries exhausted
-    throw new Error(`[Azure Storage] ${operationName} failed after ${maxRetries + 1} attempts: ${lastError?.message}`)
-  }
-
   // Initialize SAS URL if getSASUrl is provided
   if (options.getSASUrl && !options.sasURL) {
     options.getSASUrl().then((url) => {
@@ -172,17 +119,20 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
   const getFileClient = async (fullBlobPath: string) => {
     // Smart Refresh: Only fetch if empty or expired
     if (options.getSASUrl && isTokenExpired(sasURL.value)) {
-      if (!refreshPromise) {
-        refreshPromise = options.getSASUrl().then((url) => {
-          refreshPromise = null
-          return url
-        })
-      }
+      refreshPromise ??= options.getSASUrl().then((url) => {
+        refreshPromise = null
+        return url
+      })
       sasURL.value = await refreshPromise
     }
 
+    // Strip the basePath since DataLakeDirectoryClient(sasURL) already points there
+    const basePath = getBasePathFromSasUrl(sasURL.value)
+    const relativePath =
+      basePath && fullBlobPath.startsWith(basePath + "/") ? fullBlobPath.slice(basePath.length + 1) : fullBlobPath
+
     // Split path into directory and filename
-    const pathParts = fullBlobPath.split("/")
+    const pathParts = relativePath.split("/")
     const filename = pathParts.pop()!
     const dirPath = pathParts.join("/")
 
@@ -225,33 +175,31 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
           throw new Error("Cannot upload remote file - no local data available")
         }
 
-        return withRetry(async () => {
-          // Build full storage key upfront
-          const storageKey = buildFullStorageKey(file.id)
-          const fileClient = await getFileClient(storageKey)
+        // Build full storage key upfront
+        const storageKey = buildFullStorageKey(file.id)
+        const fileClient = await getFileClient(storageKey)
 
-          await fileClient.upload(file.data, {
-            metadata: {
-              ...options.metadata,
-              mimeType: file.mimeType,
-              size: String(file.size),
-              originalName: file.name,
-            },
-            pathHttpHeaders: {
-              ...options.pathHttpHeaders,
-              contentType: file.mimeType,
-            },
-            onProgress: ({ loadedBytes }: { loadedBytes: number }) => {
-              const uploadedPercentage = Math.round((loadedBytes / file.size) * 100)
-              context.onProgress(uploadedPercentage)
-            },
-          })
+        await fileClient.upload(file.data, {
+          metadata: {
+            ...options.metadata,
+            mimeType: file.mimeType,
+            size: String(file.size),
+            originalName: file.name,
+          },
+          pathHttpHeaders: {
+            ...options.pathHttpHeaders,
+            contentType: file.mimeType,
+          },
+          onProgress: ({ loadedBytes }: { loadedBytes: number }) => {
+            const uploadedPercentage = Math.round((loadedBytes / file.size) * 100)
+            context.onProgress(uploadedPercentage)
+          },
+        })
 
-          return {
-            url: fileClient.url,
-            storageKey,
-          } satisfies AzureUploadResult
-        }, `Upload file "${file.name}"`)
+        return {
+          url: fileClient.url,
+          storageKey,
+        } satisfies AzureUploadResult
       },
 
       /**
@@ -259,20 +207,18 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
        * Expects the full storageKey (e.g., "basePath/subdir/filename.jpg").
        */
       async getRemoteFile(storageKey, _context) {
-        return withRetry(async () => {
-          const fileClient = await getFileClient(storageKey)
-          const properties = await fileClient.getProperties()
+        const fileClient = await getFileClient(storageKey)
+        const properties = await fileClient.getProperties()
 
-          return {
-            size: properties.contentLength || 0,
-            mimeType: properties.contentType || "application/octet-stream",
-            remoteUrl: fileClient.url,
-            uploadResult: {
-              url: fileClient.url,
-              storageKey,
-            } satisfies AzureUploadResult,
-          }
-        }, `Get remote file "${storageKey}"`)
+        return {
+          size: properties.contentLength || 0,
+          mimeType: properties.contentType || "application/octet-stream",
+          remoteUrl: fileClient.url,
+          uploadResult: {
+            url: fileClient.url,
+            storageKey,
+          } satisfies AzureUploadResult,
+        }
       },
 
       /**
@@ -290,10 +236,8 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
           return
         }
 
-        return withRetry(async () => {
-          const fileClient = await getFileClient(storageKey)
-          await fileClient.deleteIfExists()
-        }, `Delete file "${file.name}"`)
+        const fileClient = await getFileClient(storageKey)
+        await fileClient.deleteIfExists()
       },
     },
   }

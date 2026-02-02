@@ -2,33 +2,46 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createMockPluginContext } from "../../helpers"
 import { PluginAzureDataLake } from "../../../src/runtime/composables/useUploadKit/plugins/storage/azure-datalake"
 
+// Track subdirectory navigation for integration tests
+let lastSubdirectoryPath: string | null = null
+
 // Mock the Azure SDK - vitest hoists vi.mock calls automatically
-vi.mock("@azure/storage-file-datalake", () => ({
-  DataLakeDirectoryClient: vi.fn().mockImplementation((sasUrl: string) => {
-    const mockFileClient = {
-      url: `${sasUrl}/test-file.jpg`,
-      name: "test-file.jpg",
-      upload: vi.fn().mockResolvedValue({}),
-      getProperties: vi.fn().mockResolvedValue({
-        contentLength: 1024,
-        contentType: "image/jpeg",
-      }),
-      deleteIfExists: vi.fn().mockResolvedValue({}),
+vi.mock("@azure/storage-file-datalake", () => {
+  // Use a class to properly support `new` keyword
+  class MockDataLakeDirectoryClient {
+    sasUrl: string
+
+    constructor(sasUrl: string) {
+      this.sasUrl = sasUrl
     }
 
-    const mockSubdirClient = {
-      getFileClient: vi.fn().mockReturnValue(mockFileClient),
-      createIfNotExists: vi.fn().mockResolvedValue({}),
-      getSubdirectoryClient: vi.fn().mockReturnThis(),
+    getFileClient() {
+      return {
+        url: `${this.sasUrl}/test-file.jpg`,
+        name: "test-file.jpg",
+        upload: vi.fn().mockResolvedValue({}),
+        getProperties: vi.fn().mockResolvedValue({
+          contentLength: 1024,
+          contentType: "image/jpeg",
+        }),
+        deleteIfExists: vi.fn().mockResolvedValue({}),
+      }
     }
 
-    return {
-      getFileClient: vi.fn().mockReturnValue(mockFileClient),
-      getSubdirectoryClient: vi.fn().mockReturnValue(mockSubdirClient),
-      createIfNotExists: vi.fn().mockResolvedValue({}),
+    getSubdirectoryClient(path: string) {
+      lastSubdirectoryPath = path
+      return new MockDataLakeDirectoryClient(`${this.sasUrl}/${path}`)
     }
-  }),
-}))
+
+    createIfNotExists() {
+      return Promise.resolve({})
+    }
+  }
+
+  return {
+    DataLakeDirectoryClient: MockDataLakeDirectoryClient,
+  }
+})
 
 describe("providers", () => {
   describe("PluginAzureDataLake", () => {
@@ -82,16 +95,6 @@ describe("providers", () => {
             environment: "test",
             version: "1.0",
           },
-        })
-
-        expect(plugin).toBeDefined()
-      })
-
-      it("should accept retry configuration", () => {
-        const plugin = PluginAzureDataLake({
-          sasURL: "https://storage.blob.core.windows.net/container?sv=2021-06-08&se=2030-01-01T00:00:00Z&sr=c&sp=rwdl&sig=mock",
-          retries: 5,
-          retryDelay: 2000,
         })
 
         expect(plugin).toBeDefined()
@@ -212,78 +215,125 @@ describe("providers", () => {
       })
     })
 
-    describe("path handling", () => {
-      it("should strip leading and trailing slashes from path", () => {
-        const path = "/uploads/images/"
-        const cleanPath = path.replace(/^\/+|\/+$/g, "")
+    describe("SAS URL with embedded path (directory-scoped tokens)", () => {
+      it("should not navigate to doubled path when uploading with directory-scoped SAS", async () => {
+        // This integration test verifies the plugin correctly handles directory-scoped SAS URLs
+        // by checking the actual path passed to getSubdirectoryClient
+        lastSubdirectoryPath = null
 
-        expect(cleanPath).toBe("uploads/images")
-      })
+        const directoryScopedSasUrl =
+          "https://account.dfs.core.windows.net/container/org123?sv=2026-02-06&se=2030-01-01T00:00:00Z&sr=d&sp=rcwd&sig=mock"
 
-      it("should handle path with only slashes", () => {
-        const path = "///"
-        const cleanPath = path.replace(/^\/+|\/+$/g, "")
-
-        expect(cleanPath).toBe("")
-      })
-
-      it("should preserve path without slashes", () => {
-        const path = "uploads"
-        const cleanPath = path.replace(/^\/+|\/+$/g, "")
-
-        expect(cleanPath).toBe("uploads")
-      })
-    })
-
-    describe("retry logic", () => {
-      it("should use default retry configuration", () => {
         const plugin = PluginAzureDataLake({
-          sasURL: "https://storage.blob.core.windows.net/container?sv=2021-06-08&se=2030-01-01T00:00:00Z&sr=c&sp=rwdl&sig=mock",
+          sasURL: directoryScopedSasUrl,
+          autoCreateDirectory: false, // Skip directory creation to simplify test
         })
 
-        // Default retries: 3, default delay: 1000ms
-        expect(plugin).toBeDefined()
-      })
-
-      it("should calculate exponential backoff correctly", () => {
-        const initialDelay = 1000
-        const delays = []
-
-        for (let attempt = 0; attempt < 4; attempt++) {
-          delays.push(initialDelay * Math.pow(2, attempt))
+        const localFile = {
+          id: "test-file.jpg",
+          name: "test-file.jpg",
+          size: 1024,
+          mimeType: "image/jpeg",
+          status: "waiting" as const,
+          progress: { percentage: 0 },
+          source: "local" as const,
+          data: new File(["test"], "test-file.jpg", { type: "image/jpeg" }),
+          meta: {},
         }
 
-        expect(delays).toEqual([1000, 2000, 4000, 8000])
-      })
-    })
-
-    describe("directory caching", () => {
-      it("should cache checked directories concept", () => {
-        // Test the caching behavior conceptually
-        const directoryCache = new Set<string>()
-
-        directoryCache.add("uploads/images")
-
-        expect(directoryCache.has("uploads/images")).toBe(true)
-        expect(directoryCache.has("uploads/videos")).toBe(false)
-      })
-    })
-
-    describe("upload result format", () => {
-      it("should define correct result structure", () => {
-        // Expected result format
-        interface AzureUploadResult {
-          url: string
-          storageKey: string
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
         }
 
-        const expectedResult: AzureUploadResult = {
-          url: "https://storage.blob.core.windows.net/container/test.jpg",
-          storageKey: "test.jpg",
-        }
+        await plugin.hooks.upload(localFile, context)
 
-        expect(expectedResult.url).toBeDefined()
-        expect(expectedResult.storageKey).toBeDefined()
+        // The bug: without the fix, this would be "org123" (the basePath gets doubled)
+        // The fix: should be null (no subdirectory navigation needed for direct file upload)
+        //          or should NOT contain "org123" if there's additional path nesting
+        expect(lastSubdirectoryPath).not.toBe("org123")
+      })
+
+      it("should strip basePath from fullBlobPath to avoid path duplication", () => {
+        // This test covers the edge case where users generate directory-scoped SAS tokens
+        // using getDirectoryClient(path).generateSasUrl(), which embeds the path in the URL.
+        //
+        // Example:
+        // - SAS URL: https://account.dfs.core.windows.net/container/org123?sig=...
+        // - DataLakeDirectoryClient(sasURL) already points to /container/org123
+        // - buildFullStorageKey returns "org123/file.jpg"
+        // - Without the fix, getFileClient would navigate to "org123/org123/file.jpg" (WRONG)
+        // - With the fix, it strips "org123" and navigates to just "file.jpg" (CORRECT)
+
+        const sasUrl =
+          "https://socialsundaedev.dfs.core.windows.net/user-uploads/FW3tlZyS1LmXDkE0AJn3kGYhQFUZtT6v?sv=2026-02-06&se=2026-02-09T05%3A00%3A00Z&sr=d&sp=rcwd&sig=mock"
+
+        // Extract basePath from SAS URL (same logic as in the plugin)
+        const parsed = new URL(sasUrl)
+        const parts = parsed.pathname.split("/").filter(Boolean)
+        const basePath = parts.slice(1).join("/") // Skip container
+
+        expect(basePath).toBe("FW3tlZyS1LmXDkE0AJn3kGYhQFUZtT6v")
+
+        // Simulate buildFullStorageKey output
+        const fileId = "my-uploaded-file.jpg"
+        const fullBlobPath = `${basePath}/${fileId}`
+
+        expect(fullBlobPath).toBe("FW3tlZyS1LmXDkE0AJn3kGYhQFUZtT6v/my-uploaded-file.jpg")
+
+        // Apply the fix: strip basePath since DataLakeDirectoryClient(sasURL) already points there
+        const relativePath =
+          basePath && fullBlobPath.startsWith(basePath + "/") ? fullBlobPath.slice(basePath.length + 1) : fullBlobPath
+
+        // After stripping, we should only have the filename
+        expect(relativePath).toBe("my-uploaded-file.jpg")
+      })
+
+      it("should handle nested paths within directory-scoped SAS", () => {
+        // When options.path adds additional nesting
+        const sasUrl =
+          "https://account.dfs.core.windows.net/container/org123?sv=2026-02-06&se=2030-01-01T00:00:00Z&sr=d&sp=rcwd&sig=mock"
+
+        const parsed = new URL(sasUrl)
+        const parts = parsed.pathname.split("/").filter(Boolean)
+        const basePath = parts.slice(1).join("/")
+
+        expect(basePath).toBe("org123")
+
+        // With options.path = "uploads"
+        const optionsPath = "uploads"
+        const fileId = "photo.jpg"
+        const fullBlobPath = `${basePath}/${optionsPath}/${fileId}`
+
+        expect(fullBlobPath).toBe("org123/uploads/photo.jpg")
+
+        // Strip basePath
+        const relativePath =
+          basePath && fullBlobPath.startsWith(basePath + "/") ? fullBlobPath.slice(basePath.length + 1) : fullBlobPath
+
+        // Should have options.path + filename
+        expect(relativePath).toBe("uploads/photo.jpg")
+      })
+
+      it("should not strip anything when SAS URL points to container root", () => {
+        // Container-level SAS (no embedded path)
+        const sasUrl =
+          "https://account.blob.core.windows.net/container?sv=2026-02-06&se=2030-01-01T00:00:00Z&sr=c&sp=rwdl&sig=mock"
+
+        const parsed = new URL(sasUrl)
+        const parts = parsed.pathname.split("/").filter(Boolean)
+        const basePath = parts.slice(1).join("/")
+
+        // No path after container
+        expect(basePath).toBe("")
+
+        const fullBlobPath = "uploads/photo.jpg"
+
+        // With empty basePath, nothing should be stripped
+        const relativePath =
+          basePath && fullBlobPath.startsWith(basePath + "/") ? fullBlobPath.slice(basePath.length + 1) : fullBlobPath
+
+        expect(relativePath).toBe("uploads/photo.jpg")
       })
     })
 
