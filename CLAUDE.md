@@ -110,6 +110,15 @@ The `/docs` folder uses Docus (built on Nuxt Content):
 - Config: `docs/app.config.ts` (header, socials, theme)
 - MDC components: `::component-name` syntax for Vue components in markdown
 
+## Code Review Guidelines
+
+When reviewing storage adapters or SDK integrations, do NOT recommend:
+
+- **Retry/backoff logic** - These are handled internally by the respective cloud SDKs (Azure, Firebase, AWS, etc.)
+- **Token expiry checking** - Also handled internally by SDKs; don't add manual expiry checks unless there's a specific edge case the SDK doesn't cover
+
+Focus reviews on: architecture, race conditions, API design, memory leaks, and actual bugs.
+
 ## Claude Code Skills
 
 Available slash commands for this project:
