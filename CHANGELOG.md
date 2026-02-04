@@ -1,6 +1,22 @@
 # Changelog
 
 
+## [0.1.22](https://github.com/genu/nuxt-upload-kit/compare/v0.1.21...v0.1.22) (2026-02-04)
+
+
+### Features
+
+* enhance Azure Data Lake storage adapter with dynamic SAS URL handling and improved file client management ([d2aaf75](https://github.com/genu/nuxt-upload-kit/commit/d2aaf756789bd179f6b5fdb44f8c1337e6e31e84))
+
+
+### Dependencies
+
+* **deps:** update aws-sdk to v3.981.0 ([#14](https://github.com/genu/nuxt-upload-kit/issues/14)) ([01f32f3](https://github.com/genu/nuxt-upload-kit/commit/01f32f3aeb4efad009f52d44376b1a99a71e135c))
+* **deps:** update aws-sdk to v3.982.0 ([#16](https://github.com/genu/nuxt-upload-kit/issues/16)) ([fe781cc](https://github.com/genu/nuxt-upload-kit/commit/fe781cc65789cf5406c870660284529c9d71bd00))
+* **deps:** update dependency happy-dom to v20.5.0 ([#15](https://github.com/genu/nuxt-upload-kit/issues/15)) ([1b3b5ad](https://github.com/genu/nuxt-upload-kit/commit/1b3b5ade8018558b192e519927d08c758f072704))
+* **deps:** update dependency node to v24 ([#11](https://github.com/genu/nuxt-upload-kit/issues/11)) ([3f27e2e](https://github.com/genu/nuxt-upload-kit/commit/3f27e2ef4623f4f4a7afc4c4652668a9a46f9bd3))
+* pin aws-sdk and happy-dom versions to specific releases ([e8e4adb](https://github.com/genu/nuxt-upload-kit/commit/e8e4adb419c907d29787d9bef5ef2b47f6e25347))
+
 ## v0.1.21
 
 [compare changes](https://github.com/genu/nuxt-upload-kit/compare/v0.1.20...v0.1.21)
@@ -319,4 +335,3 @@
 ### ❤️ Contributors
 
 - Eugen Istoc <eugenistoc@gmail.com>
-
