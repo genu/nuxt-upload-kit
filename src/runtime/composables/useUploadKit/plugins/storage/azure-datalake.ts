@@ -1,5 +1,5 @@
 import { ref } from "vue"
-import { DataLakeDirectoryClient, type PathHttpHeaders } from "@azure/storage-file-datalake"
+import { DataLakeDirectoryClient, DataLakeFileClient, type PathHttpHeaders } from "@azure/storage-file-datalake"
 import { defineStorageAdapter } from "../../types"
 
 export interface AzureDataLakeOptions {
@@ -9,11 +9,15 @@ export interface AzureDataLakeOptions {
   sasURL?: string
 
   /**
-   * Function to dynamically fetch SAS URL
-   * Use this to handle token expiration/refreshing.
-   * If provided, it will be called before every file operation.
+   * Function to dynamically fetch SAS URL.
+   *
+   * The plugin auto-detects whether you return a directory or file SAS:
+   * - Directory SAS (sr=d): Cached and reused for batch uploads
+   * - File SAS (sr=b): Called per file for granular access control
+   *
+   * @param storageKey - The intended storage path for the file
    */
-  getSASUrl?: () => Promise<string>
+  getSASUrl?: (storageKey: string) => Promise<string>
 
   /**
    * Optional subdirectory path within the container
@@ -33,6 +37,7 @@ export interface AzureDataLakeOptions {
 
   /**
    * Automatically try to create the directory if it doesn't exist.
+   * Only applies when using directory-level SAS.
    * Disable this if your SAS token only has 'Write' (Blob) permissions
    * and not 'Create' (Directory) permissions.
    * @default true
@@ -52,22 +57,38 @@ export interface AzureUploadResult {
   storageKey: string
 }
 
+type SasMode = "directory" | "file"
+
 export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, AzureUploadResult>((options) => {
   const sasURL = ref(options.sasURL || "")
   let refreshPromise: Promise<string> | null = null
 
-  // Cache to store directories we've already checked/created to avoid redundant API calls
-  const directoryCheckedCache = new Set<string>()
+  // Auto-detected mode based on SAS URL type
+  let detectedMode: SasMode | null = null
 
   /**
-   * Extract the base path from a SAS URL.
-   * SAS URL format: https://{account}.blob.core.windows.net/{container}/{basePath}?sig=...
-   * Returns the path after the container (e.g., "orgId" or "orgId/subdir")
+   * Detect SAS type from URL by checking the 'sr' (signed resource) parameter.
+   * - sr=d: directory
+   * - sr=b: blob (file)
    */
-  const getBasePathFromSasUrl = (url: string): string => {
+  const detectSasMode = (url: string): SasMode => {
+    try {
+      const sr = new URL(url).searchParams.get("sr")
+      return sr === "d" ? "directory" : "file"
+    } catch {
+      return "directory" // Default to directory for backward compatibility
+    }
+  }
+
+  /**
+   * Extract the blob path from an Azure blob URL.
+   * URL format: https://{account}.blob.core.windows.net/{container}/{blobPath}?...
+   * Returns the path after the container (e.g., "orgId/subdir/file.jpg")
+   */
+  const getBlobPathFromUrl = (url: string): string => {
     try {
       const parsed = new URL(url)
-      // pathname is like /{container}/{basePath}
+      // pathname is like /{container}/{blobPath}
       const parts = parsed.pathname.split("/").filter(Boolean)
       // Skip container (first part), return the rest joined
       return parts.slice(1).join("/")
@@ -78,19 +99,19 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
 
   /**
    * Build the full storage key for a file.
-   * Combines: basePath (from SAS URL) + options.path + filename
+   * For directory mode: basePath (from SAS URL) + options.path + filename
+   * For file mode: options.path + filename (server controls the base path)
    */
-  const buildFullStorageKey = (filename: string): string => {
-    const basePath = getBasePathFromSasUrl(sasURL.value)
+  const buildFullStorageKey = (filename: string, forRequest = false): string => {
+    if (forRequest && detectedMode === "file") {
+      // For file mode requests, don't include basePath - server will handle it
+      const parts = [options.path, filename].filter(Boolean)
+      return parts.join("/")
+    }
+    // For directory mode or for the final storageKey
+    const basePath = getBlobPathFromUrl(sasURL.value)
     const parts = [basePath, options.path, filename].filter(Boolean)
     return parts.join("/")
-  }
-
-  // Initialize SAS URL if getSASUrl is provided
-  if (options.getSASUrl && !options.sasURL) {
-    options.getSASUrl().then((url) => {
-      sasURL.value = url
-    })
   }
 
   /**
@@ -113,21 +134,54 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
   }
 
   /**
-   * Get file client for a specific blob.
-   * Expects the full blob path (e.g., "basePath/subdir/filename.jpg").
+   * Get SAS URL for a file, handling auto-detection and caching.
    */
-  const getFileClient = async (fullBlobPath: string) => {
-    // Smart Refresh: Only fetch if empty or expired
-    if (options.getSASUrl && isTokenExpired(sasURL.value)) {
-      refreshPromise ??= options.getSASUrl().then((url) => {
-        refreshPromise = null
-        return url
-      })
-      sasURL.value = await refreshPromise
+  const getSasUrlForFile = async (storageKey: string): Promise<string> => {
+    // Static SAS URL - always use it
+    if (options.sasURL) {
+      detectedMode ??= detectSasMode(options.sasURL)
+      return options.sasURL
     }
 
+    if (!options.getSASUrl) {
+      throw new Error("Either sasURL or getSASUrl must be provided")
+    }
+
+    // File mode: always fetch fresh URL per file (no caching/deduplication)
+    if (detectedMode === "file") return options.getSASUrl(storageKey)
+
+    // First call - need to detect mode
+    if (!detectedMode) {
+      const url = await options.getSASUrl(storageKey)
+      detectedMode = detectSasMode(url)
+      sasURL.value = url
+
+      if (import.meta.dev) console.debug(`[Azure Storage] Auto-detected SAS mode: ${detectedMode}`)
+
+      // If we just discovered it's file mode, return this URL
+      if (detectedMode === "file") return url
+    }
+
+    // Directory mode: cache with expiry check and deduplication
+    if (isTokenExpired(sasURL.value)) {
+      refreshPromise ??= options.getSASUrl(storageKey).then((url) => {
+        refreshPromise = null
+        sasURL.value = url
+        return url
+      })
+
+      await refreshPromise
+    }
+
+    return sasURL.value
+  }
+
+  /**
+   * Get file client for a specific blob using directory-level SAS.
+   */
+  const getFileClientFromDirectory = async (sasUrl: string, fullBlobPath: string) => {
     // Strip the basePath since DataLakeDirectoryClient(sasURL) already points there
-    const basePath = getBasePathFromSasUrl(sasURL.value)
+    const basePath = getBlobPathFromUrl(sasUrl)
     const relativePath =
       basePath && fullBlobPath.startsWith(basePath + "/") ? fullBlobPath.slice(basePath.length + 1) : fullBlobPath
 
@@ -136,30 +190,38 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
     const filename = pathParts.pop()!
     const dirPath = pathParts.join("/")
 
-    let dir = new DataLakeDirectoryClient(sasURL.value)
+    let dir = new DataLakeDirectoryClient(sasUrl)
 
     // Navigate to subdirectory if the path contains directories
     if (dirPath) {
       dir = dir.getSubdirectoryClient(dirPath)
 
-      // Only attempt creation if enabled (default true) AND not already checked
-      const shouldCreateDir = options.autoCreateDirectory ?? true
-
-      if (shouldCreateDir && !directoryCheckedCache.has(dirPath)) {
-        // Create directory if it doesn't exist
+      // Create directory if it doesn't exist (idempotent operation)
+      if (options.autoCreateDirectory ?? true) {
         try {
           await dir.createIfNotExists()
-          directoryCheckedCache.add(dirPath)
-        } catch (error) {
-          // Ignore if already exists
-          if (import.meta.dev) {
-            console.debug(`Azure directory already exists or couldn't be created: ${dirPath}`, error)
-          }
+        } catch {
+          // Ignore - directory may already exist or permissions may not allow creation
         }
       }
     }
 
     return dir.getFileClient(filename)
+  }
+
+  /**
+   * Get file client - handles both directory and file mode SAS.
+   */
+  const getFileClient = async (storageKey: string) => {
+    const sasUrl = await getSasUrlForFile(storageKey)
+
+    if (detectedMode === "file") {
+      // File mode: SAS URL points directly to the file
+      return new DataLakeFileClient(sasUrl)
+    }
+
+    // Directory mode: navigate from directory
+    return getFileClientFromDirectory(sasUrl, storageKey)
   }
 
   return {
@@ -175,9 +237,10 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
           throw new Error("Cannot upload remote file - no local data available")
         }
 
-        // Build full storage key upfront
-        const storageKey = buildFullStorageKey(file.id)
-        const fileClient = await getFileClient(storageKey)
+        // Build storage key - for file mode requests, we pass a relative key
+        // For the final result, we need the full key
+        const requestKey = buildFullStorageKey(file.id, true)
+        const fileClient = await getFileClient(requestKey)
 
         await fileClient.upload(file.data, {
           metadata: {
@@ -196,9 +259,12 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
           },
         })
 
+        // Extract the actual storage key from the file client URL
+        const actualStorageKey = getBlobPathFromUrl(fileClient.url) || requestKey
+
         return {
           url: fileClient.url,
-          storageKey,
+          storageKey: actualStorageKey,
         } satisfies AzureUploadResult
       },
 
