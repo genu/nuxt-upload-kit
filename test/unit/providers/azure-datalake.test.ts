@@ -7,7 +7,29 @@ let lastSubdirectoryPath: string | null = null
 
 // Mock the Azure SDK - vitest hoists vi.mock calls automatically
 vi.mock("@azure/storage-file-datalake", () => {
-  // Use a class to properly support `new` keyword
+  // Helper to extract base URL without query params
+  const getBaseUrl = (url: string) => url.split("?")[0]
+
+  // Mock file client (used in both directory and file mode)
+  class MockDataLakeFileClient {
+    url: string
+    name: string
+
+    constructor(sasUrl: string) {
+      this.url = getBaseUrl(sasUrl)
+      // Extract filename from URL
+      this.name = this.url.split("/").at(-1) || "file.jpg"
+    }
+
+    upload = vi.fn().mockResolvedValue({})
+    getProperties = vi.fn().mockResolvedValue({
+      contentLength: 1024,
+      contentType: "image/jpeg",
+    })
+    deleteIfExists = vi.fn().mockResolvedValue({})
+  }
+
+  // Mock directory client (used in directory mode)
   class MockDataLakeDirectoryClient {
     sasUrl: string
 
@@ -15,22 +37,15 @@ vi.mock("@azure/storage-file-datalake", () => {
       this.sasUrl = sasUrl
     }
 
-    getFileClient() {
-      return {
-        url: `${this.sasUrl}/test-file.jpg`,
-        name: "test-file.jpg",
-        upload: vi.fn().mockResolvedValue({}),
-        getProperties: vi.fn().mockResolvedValue({
-          contentLength: 1024,
-          contentType: "image/jpeg",
-        }),
-        deleteIfExists: vi.fn().mockResolvedValue({}),
-      }
+    getFileClient(filename: string) {
+      const baseUrl = getBaseUrl(this.sasUrl)
+      return new MockDataLakeFileClient(`${baseUrl}/${filename}`)
     }
 
     getSubdirectoryClient(path: string) {
       lastSubdirectoryPath = path
-      return new MockDataLakeDirectoryClient(`${this.sasUrl}/${path}`)
+      const baseUrl = getBaseUrl(this.sasUrl)
+      return new MockDataLakeDirectoryClient(`${baseUrl}/${path}`)
     }
 
     createIfNotExists() {
@@ -40,13 +55,284 @@ vi.mock("@azure/storage-file-datalake", () => {
 
   return {
     DataLakeDirectoryClient: MockDataLakeDirectoryClient,
+    DataLakeFileClient: MockDataLakeFileClient,
   }
 })
+
+// Helper to create mock local files for upload tests
+const createMockLocalFile = (id: string) => {
+  const hasExtension = id.includes(".")
+  const name = hasExtension ? id : `${id}.jpg`
+  return {
+    id,
+    name,
+    size: 1024,
+    mimeType: "image/jpeg",
+    status: "waiting" as const,
+    progress: { percentage: 0 },
+    source: "local" as const,
+    data: new File(["test"], name, { type: "image/jpeg" }),
+    meta: {},
+  }
+}
+
+// Helper to detect SAS mode from URL (mirrors implementation logic)
+const detectSasMode = (url: string): "directory" | "file" => {
+  const sr = new URL(url).searchParams.get("sr")
+  if (sr === "d") return "directory"
+  if (sr === "b") return "file"
+  return "directory" // Default
+}
 
 describe("providers", () => {
   describe("PluginAzureDataLake", () => {
     beforeEach(() => {
       vi.clearAllMocks()
+    })
+
+    describe("SAS mode detection", () => {
+      it("should detect directory mode from sr=d parameter", () => {
+        const directorySasUrl =
+          "https://account.dfs.core.windows.net/container/path?sv=2021-06-08&se=2030-01-01T00:00:00Z&sr=d&sp=rcwd&sig=mock"
+
+        expect(detectSasMode(directorySasUrl)).toBe("directory")
+      })
+
+      it("should detect file mode from sr=b parameter", () => {
+        const fileSasUrl =
+          "https://account.blob.core.windows.net/container/path/file.jpg?sv=2021-06-08&se=2030-01-01T00:00:00Z&sr=b&sp=rwd&sig=mock"
+
+        expect(detectSasMode(fileSasUrl)).toBe("file")
+      })
+
+      it("should default to directory mode when sr parameter is missing", () => {
+        const urlWithoutSr = "https://account.blob.core.windows.net/container?sv=2021-06-08&se=2030-01-01T00:00:00Z&sp=rwdl&sig=mock"
+
+        expect(detectSasMode(urlWithoutSr)).toBe("directory")
+      })
+    })
+
+    describe("directory mode caching behavior", () => {
+      it("should call getSASUrl only once for multiple uploads in directory mode", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const directorySasUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=mock`
+
+        const getSASUrl = vi.fn().mockResolvedValue(directorySasUrl)
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        // Upload multiple files
+        await plugin.hooks.upload(createMockLocalFile("file1"), context)
+        await plugin.hooks.upload(createMockLocalFile("file2"), context)
+        await plugin.hooks.upload(createMockLocalFile("file3"), context)
+
+        // Directory mode should cache - getSASUrl called only once
+        expect(getSASUrl).toHaveBeenCalledTimes(1)
+      })
+
+      it("should refresh SAS URL when token is expired in directory mode", async () => {
+        // First URL is expired
+        const expiredUrl =
+          "https://account.dfs.core.windows.net/container?sv=2021-06-08&se=2020-01-01T00:00:00Z&sr=d&sp=rcwd&sig=expired"
+
+        // Second URL is valid
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const validUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=valid`
+
+        const getSASUrl = vi.fn().mockResolvedValueOnce(expiredUrl).mockResolvedValueOnce(validUrl)
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        // First upload - gets expired URL, then refreshes
+        await plugin.hooks.upload(createMockLocalFile("file1"), context)
+
+        // Second upload - should use the refreshed valid URL (no new call)
+        await plugin.hooks.upload(createMockLocalFile("file2"), context)
+
+        // First call gets expired, second call refreshes, third upload reuses
+        expect(getSASUrl).toHaveBeenCalledTimes(2)
+      })
+
+      it("should deduplicate concurrent refresh requests in directory mode", async () => {
+        const expiredUrl =
+          "https://account.dfs.core.windows.net/container?sv=2021-06-08&se=2020-01-01T00:00:00Z&sr=d&sp=rcwd&sig=expired"
+
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const validUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=valid`
+
+        // Slow refresh to simulate concurrent requests
+        const getSASUrl = vi
+          .fn()
+          .mockResolvedValueOnce(expiredUrl)
+          .mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve(validUrl), 50)))
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        // First upload to establish directory mode with expired token
+        await plugin.hooks.upload(createMockLocalFile("file0"), context)
+
+        // Concurrent uploads while refresh is in progress
+        const uploads = Promise.all([
+          plugin.hooks.upload(createMockLocalFile("file1"), context),
+          plugin.hooks.upload(createMockLocalFile("file2"), context),
+          plugin.hooks.upload(createMockLocalFile("file3"), context),
+        ])
+
+        await uploads
+
+        // Should only call getSASUrl twice: once for initial, once for refresh
+        // Concurrent requests should share the refresh promise
+        expect(getSASUrl).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    describe("file mode per-request behavior", () => {
+      it("should call getSASUrl for each file in file mode", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const createFileSasUrl = (filename: string) =>
+          `https://account.blob.core.windows.net/container/${filename}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=rwd&sig=mock-${filename}`
+
+        const getSASUrl = vi.fn().mockImplementation((storageKey: string) => Promise.resolve(createFileSasUrl(storageKey)))
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        // Upload multiple files
+        await plugin.hooks.upload(createMockLocalFile("file1"), context)
+        await plugin.hooks.upload(createMockLocalFile("file2"), context)
+        await plugin.hooks.upload(createMockLocalFile("file3"), context)
+
+        // File mode should call getSASUrl for each file
+        expect(getSASUrl).toHaveBeenCalledTimes(3)
+      })
+
+      it("should not cache or deduplicate in file mode", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const createFileSasUrl = (filename: string) =>
+          `https://account.blob.core.windows.net/container/${filename}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=rwd&sig=mock`
+
+        // Slow response to test concurrent behavior
+        const getSASUrl = vi
+          .fn()
+          .mockImplementation(
+            (storageKey: string) => new Promise((resolve) => setTimeout(() => resolve(createFileSasUrl(storageKey)), 10)),
+          )
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        // Concurrent uploads in file mode
+        await Promise.all([
+          plugin.hooks.upload(createMockLocalFile("file1"), context),
+          plugin.hooks.upload(createMockLocalFile("file2"), context),
+          plugin.hooks.upload(createMockLocalFile("file3"), context),
+        ])
+
+        // File mode: each concurrent request gets its own SAS URL
+        expect(getSASUrl).toHaveBeenCalledTimes(3)
+      })
+    })
+
+    describe("buildFullStorageKey behavior", () => {
+      it("should include basePath in storageKey for directory mode", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const directorySasUrl = `https://account.dfs.core.windows.net/container/org123?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=mock`
+
+        const plugin = PluginAzureDataLake({
+          sasURL: directorySasUrl,
+          path: "uploads",
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        const result = await plugin.hooks.upload(createMockLocalFile("photo"), context)
+
+        // storageKey should be full path: basePath/options.path/filename
+        expect(result.storageKey).toContain("org123")
+        expect(result.storageKey).toContain("uploads")
+        expect(result.storageKey).toContain("photo")
+      })
+
+      it("should pass storageKey to getSASUrl in file mode for server-side path control", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const receivedStorageKeys: string[] = []
+
+        const getSASUrl = vi.fn().mockImplementation((storageKey: string) => {
+          receivedStorageKeys.push(storageKey)
+          return Promise.resolve(
+            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=rwd&sig=mock`,
+          )
+        })
+
+        const plugin = PluginAzureDataLake({
+          getSASUrl,
+          path: "uploads",
+          autoCreateDirectory: false,
+        })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        await plugin.hooks.upload(createMockLocalFile("photo.jpg"), context)
+
+        // In file mode, getSASUrl receives the relative path (options.path + filename)
+        // so the server can control the full path
+        expect(receivedStorageKeys[0]).toBe("uploads/photo.jpg")
+      })
     })
 
     describe("plugin configuration", () => {
