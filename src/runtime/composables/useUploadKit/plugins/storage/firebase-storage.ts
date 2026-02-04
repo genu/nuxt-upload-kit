@@ -48,19 +48,6 @@ export interface FirebaseStorageOptions {
    * @example "attachment; filename=file.pdf"
    */
   contentDisposition?: string
-
-  /**
-   * Number of retry attempts for failed operations
-   * @default 3
-   */
-  retries?: number
-
-  /**
-   * Initial delay between retries in milliseconds
-   * Uses exponential backoff: delay * (2 ^ attempt)
-   * @default 1000 (1 second)
-   */
-  retryDelay?: number
 }
 
 export interface FirebaseStorageUploadResult {
@@ -91,43 +78,6 @@ export interface FirebaseStorageUploadResult {
 }
 
 export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions, FirebaseStorageUploadResult>((options) => {
-  // Retry configuration
-  const maxRetries = options.retries ?? 3
-  const initialRetryDelay = options.retryDelay ?? 1000
-
-  /**
-   * Retry an async operation with exponential backoff
-   */
-  async function withRetry<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
-    let lastError: Error | undefined
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation()
-      } catch (error) {
-        lastError = error as Error
-
-        if (attempt === maxRetries) {
-          break
-        }
-
-        const delay = initialRetryDelay * Math.pow(2, attempt)
-
-        if (import.meta.dev) {
-          console.warn(
-            `[Firebase Storage] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}). ` +
-              `Retrying in ${delay}ms...`,
-            error,
-          )
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
-
-    throw new Error(`[Firebase Storage] ${operationName} failed after ${maxRetries + 1} attempts: ${lastError?.message}`)
-  }
-
   /**
    * Build the full storage key for a file.
    * Combines: options.path + filename
@@ -214,13 +164,8 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
           throw new Error("Cannot upload remote file - no local data available")
         }
 
-        // Build full storage key upfront
         const storageKey = buildFullStorageKey(file.id)
-
-        return withRetry(
-          () => uploadToFirebase(storageKey, file.data as Blob, file.mimeType, file.name, context.onProgress),
-          `Upload file "${file.name}"`,
-        )
+        return uploadToFirebase(storageKey, file.data as Blob, file.mimeType, file.name, context.onProgress)
       },
 
       /**
@@ -228,24 +173,21 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
        * Expects the full storageKey (e.g., "uploads/images/filename.jpg").
        */
       async getRemoteFile(storageKey, _context) {
-        return withRetry(async () => {
-          const fileRef = getStorageRef(storageKey)
+        const fileRef = getStorageRef(storageKey)
+        const [metadata, downloadURL] = await Promise.all([getMetadata(fileRef), getDownloadURL(fileRef)])
 
-          const [metadata, downloadURL] = await Promise.all([getMetadata(fileRef), getDownloadURL(fileRef)])
-
-          return {
-            size: metadata.size,
-            mimeType: metadata.contentType || "application/octet-stream",
-            remoteUrl: downloadURL,
-            uploadResult: {
-              url: downloadURL,
-              storageKey,
-              bucket: metadata.bucket,
-              generation: metadata.generation,
-              md5Hash: metadata.md5Hash,
-            } satisfies FirebaseStorageUploadResult,
-          }
-        }, `Get remote file "${storageKey}"`)
+        return {
+          size: metadata.size,
+          mimeType: metadata.contentType || "application/octet-stream",
+          remoteUrl: downloadURL,
+          uploadResult: {
+            url: downloadURL,
+            storageKey,
+            bucket: metadata.bucket,
+            generation: metadata.generation,
+            md5Hash: metadata.md5Hash,
+          } satisfies FirebaseStorageUploadResult,
+        }
       },
 
       /**
@@ -253,20 +195,15 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
        * Uses file.storageKey (the full path in storage).
        */
       async remove(file, _context) {
-        // Use storageKey for deletion - this is set after upload or from initialFiles
         const storageKey = file.storageKey
         if (!storageKey) {
-          // File was never uploaded to storage - nothing to delete
-          if (import.meta.dev) {
-            console.debug(`[Firebase Storage] Skipping delete for file "${file.name}" - no storageKey`)
-          }
+          if (import.meta.dev) console.debug(`[Firebase Storage] Skipping delete for file "${file.name}" - no storageKey`)
+
           return
         }
 
-        return withRetry(async () => {
-          const fileRef = getStorageRef(storageKey)
-          await deleteObject(fileRef)
-        }, `Delete file "${file.name}"`)
+        const fileRef = getStorageRef(storageKey)
+        await deleteObject(fileRef)
       },
     },
   }
