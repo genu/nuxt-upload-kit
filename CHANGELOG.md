@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.23](https://github.com/genu/nuxt-upload-kit/compare/v0.1.22...v0.1.23) (2026-02-09)
+
+
+### Features
+
+* enhance getSASUrl to accept operation parameter for upload, read, and delete actions ([bce0623](https://github.com/genu/nuxt-upload-kit/commit/bce06231814323ab1c52ce8b772d93ddadd3a836))
+
 ## [0.1.22](https://github.com/genu/nuxt-upload-kit/compare/v0.1.21...v0.1.22) (2026-02-04)
 
 
