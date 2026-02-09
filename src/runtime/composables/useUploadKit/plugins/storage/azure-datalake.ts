@@ -16,8 +16,11 @@ export interface AzureDataLakeOptions {
    * - File SAS (sr=b): Called per file for granular access control
    *
    * @param storageKey - The intended storage path for the file
+   * @param operation - The storage operation being performed. Use this to:
+   *   - Generate SAS tokens with appropriate permissions per operation
+   *   - Apply different server-side path resolution (e.g., prepend org prefix only for "upload")
    */
-  getSASUrl?: (storageKey: string) => Promise<string>
+  getSASUrl?: (storageKey: string, operation: "upload" | "delete" | "read") => Promise<string>
 
   /**
    * Optional subdirectory path within the container
@@ -133,10 +136,12 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
     }
   }
 
+  type SasOperation = "upload" | "delete" | "read"
+
   /**
    * Get SAS URL for a file, handling auto-detection and caching.
    */
-  const getSasUrlForFile = async (storageKey: string): Promise<string> => {
+  const getSasUrlForFile = async (storageKey: string, operation: SasOperation): Promise<string> => {
     // Static SAS URL - always use it
     if (options.sasURL) {
       detectedMode ??= detectSasMode(options.sasURL)
@@ -148,11 +153,11 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
     }
 
     // File mode: always fetch fresh URL per file (no caching/deduplication)
-    if (detectedMode === "file") return options.getSASUrl(storageKey)
+    if (detectedMode === "file") return options.getSASUrl(storageKey, operation)
 
     // First call - need to detect mode
     if (!detectedMode) {
-      const url = await options.getSASUrl(storageKey)
+      const url = await options.getSASUrl(storageKey, operation)
       detectedMode = detectSasMode(url)
       sasURL.value = url
 
@@ -164,7 +169,7 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
 
     // Directory mode: cache with expiry check and deduplication
     if (isTokenExpired(sasURL.value)) {
-      refreshPromise ??= options.getSASUrl(storageKey).then((url) => {
+      refreshPromise ??= options.getSASUrl(storageKey, operation).then((url) => {
         refreshPromise = null
         sasURL.value = url
         return url
@@ -212,8 +217,8 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
   /**
    * Get file client - handles both directory and file mode SAS.
    */
-  const getFileClient = async (storageKey: string) => {
-    const sasUrl = await getSasUrlForFile(storageKey)
+  const getFileClient = async (storageKey: string, operation: SasOperation) => {
+    const sasUrl = await getSasUrlForFile(storageKey, operation)
 
     if (detectedMode === "file") {
       // File mode: SAS URL points directly to the file
@@ -240,7 +245,7 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
         // Build storage key - for file mode requests, we pass a relative key
         // For the final result, we need the full key
         const requestKey = buildFullStorageKey(file.id, true)
-        const fileClient = await getFileClient(requestKey)
+        const fileClient = await getFileClient(requestKey, "upload")
 
         await fileClient.upload(file.data, {
           metadata: {
@@ -273,7 +278,7 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
        * Expects the full storageKey (e.g., "basePath/subdir/filename.jpg").
        */
       async getRemoteFile(storageKey, _context) {
-        const fileClient = await getFileClient(storageKey)
+        const fileClient = await getFileClient(storageKey, "read")
         const properties = await fileClient.getProperties()
 
         return {
@@ -302,7 +307,7 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
           return
         }
 
-        const fileClient = await getFileClient(storageKey)
+        const fileClient = await getFileClient(storageKey, "delete")
         await fileClient.deleteIfExists()
       },
     },

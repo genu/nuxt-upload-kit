@@ -623,6 +623,79 @@ describe("providers", () => {
       })
     })
 
+    describe("getSASUrl operation parameter", () => {
+      it("should pass 'upload' operation when uploading a file", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
+          Promise.resolve(
+            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=cw&sig=mock`,
+          ),
+        )
+
+        const plugin = PluginAzureDataLake({ getSASUrl })
+
+        const context = {
+          ...createMockPluginContext(),
+          onProgress: vi.fn(),
+        }
+
+        await plugin.hooks.upload(createMockLocalFile("photo.jpg"), context)
+
+        expect(getSASUrl).toHaveBeenCalledWith("photo.jpg", "upload")
+      })
+
+      it("should pass 'read' operation when getting remote file", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
+          Promise.resolve(
+            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=r&sig=mock`,
+          ),
+        )
+
+        const plugin = PluginAzureDataLake({ getSASUrl })
+        const context = createMockPluginContext()
+
+        await plugin.hooks.getRemoteFile!("org123/photo.jpg", context)
+
+        expect(getSASUrl).toHaveBeenCalledWith("org123/photo.jpg", "read")
+      })
+
+      it("should pass 'delete' operation when removing a file", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+
+        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
+          Promise.resolve(
+            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=d&sig=mock`,
+          ),
+        )
+
+        const plugin = PluginAzureDataLake({ getSASUrl })
+        const context = createMockPluginContext()
+
+        const file = {
+          id: "photo.jpg",
+          name: "photo.jpg",
+          size: 1024,
+          mimeType: "image/jpeg",
+          status: "complete" as const,
+          progress: { percentage: 100 },
+          source: "local" as const,
+          data: new File(["test"], "photo.jpg", { type: "image/jpeg" }),
+          storageKey: "org123/photo.jpg",
+          meta: {},
+        }
+
+        await plugin.hooks.remove!(file, context)
+
+        expect(getSASUrl).toHaveBeenCalledWith("org123/photo.jpg", "delete")
+      })
+    })
+
     describe("storageKey round-trip contract", () => {
       it("storageKey should be the full path (basePath + options.path + filename)", () => {
         // This test documents the updated contract:
