@@ -55,9 +55,6 @@ jobs:
       - name: Prepare
         run: pnpm dev:prepare
 
-      - name: Build
-        run: pnpm prepack
-
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         env:
