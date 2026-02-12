@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       mitt:
-        specifier: ^3.0.1
+        specifier: 3.0.1
         version: 3.0.1
     devDependencies:
       '@aws-sdk/client-s3':
@@ -19,7 +19,7 @@ importers:
         specifier: 3.988.0
         version: 3.988.0(@aws-sdk/client-s3@3.988.0)
       '@azure/storage-file-datalake':
-        specifier: ^12.29.0
+        specifier: 12.29.0
         version: 12.29.0
       '@ffmpeg/ffmpeg':
         specifier: 0.12.15
@@ -28,22 +28,22 @@ importers:
         specifier: 0.12.2
         version: 0.12.2
       '@nuxt/devtools':
-        specifier: ^3.1.1
+        specifier: 3.2.1
         version: 3.2.1(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(vue@3.5.28(typescript@5.9.3))
       '@nuxt/eslint-config':
-        specifier: ^1.13.0
+        specifier: 1.15.1
         version: 1.15.1(@typescript-eslint/utils@8.55.0(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.28)(eslint@10.0.0(jiti@2.6.1))(typescript@5.9.3)
       '@nuxt/kit':
         specifier: 4.3.1
         version: 4.3.1(magicast@0.5.2)
       '@nuxt/module-builder':
-        specifier: ^1.0.2
+        specifier: 1.0.2
         version: 1.0.2(@nuxt/cli@3.33.1(@nuxt/schema@4.3.1)(cac@6.7.14)(magicast@0.5.2))(@vue/compiler-core@3.5.28)(esbuild@0.27.3)(typescript@5.9.3)(vue-tsc@3.2.4(typescript@5.9.3))(vue@3.5.28(typescript@5.9.3))
       '@nuxt/schema':
         specifier: 4.3.1
         version: 4.3.1
       '@nuxt/test-utils':
-        specifier: ^4.0.0
+        specifier: 4.0.0
         version: 4.0.0(happy-dom@20.6.1)(magicast@0.5.2)(playwright-core@1.57.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(happy-dom@20.6.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))
       '@types/node':
         specifier: latest
@@ -5544,10 +5544,6 @@ packages:
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
 
-  fast-xml-parser@5.3.3:
-    resolution: {integrity: sha512-2O3dkPAAC6JavuMm8+4+pgTk+5hoAs+CjZ+sWcQLkX9+/tHRuTkQh/Oaifr8qDmZ8iEHb771Ea6G8CdwkrgvYA==}
-    hasBin: true
-
   fast-xml-parser@5.3.4:
     resolution: {integrity: sha512-EFd6afGmXlCx8H8WTZHhAoDaWaGyuIBoZJ2mknrNxug+aZKjkp0a0dlars9Izl+jF+7Gu1/5f/2h68cQpe0IiA==}
     hasBin: true
@@ -9339,7 +9335,7 @@ snapshots:
 
   '@azure/core-xml@1.5.0':
     dependencies:
-      fast-xml-parser: 5.3.3
+      fast-xml-parser: 5.3.4
       tslib: 2.8.1
 
   '@azure/logger@1.3.0':
@@ -15272,10 +15268,6 @@ snapshots:
 
   fast-uri@3.1.0: {}
 
-  fast-xml-parser@5.3.3:
-    dependencies:
-      strnum: 2.1.2
-
   fast-xml-parser@5.3.4:
     dependencies:
       strnum: 2.1.2
@@ -19345,7 +19337,7 @@ snapshots:
 
   vue-sfc-transformer@0.1.17(@vue/compiler-core@3.5.28)(esbuild@0.27.3)(vue@3.5.28(typescript@5.9.3)):
     dependencies:
-      '@babel/parser': 7.28.6
+      '@babel/parser': 7.29.0
       '@vue/compiler-core': 3.5.28
       esbuild: 0.27.3
       vue: 3.5.28(typescript@5.9.3)
