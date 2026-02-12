@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.24](https://github.com/genu/nuxt-upload-kit/compare/v0.1.23...v0.1.24) (2026-02-12)
+
+
+### Features
+
+* add standalone upload support for storage adapters and thumbnail upload option ([5145649](https://github.com/genu/nuxt-upload-kit/commit/51456494ceae189c4916a69c9434b5094ee0162d))
+
 ## [0.1.23](https://github.com/genu/nuxt-upload-kit/compare/v0.1.22...v0.1.23) (2026-02-09)
 
 
