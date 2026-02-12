@@ -98,6 +98,15 @@ export interface BaseUploadFile<TUploadResult = any> {
    * Plugins can add data here (e.g., { extension: 'jpg', originalWidth: 4000 })
    */
   meta: Record<string, unknown>
+
+  /**
+   * Thumbnail upload result (populated when `thumbnails.upload` is enabled).
+   * Contains the URL and storage key for the uploaded thumbnail.
+   */
+  thumbnail?: {
+    url: string
+    storageKey: string
+  }
 }
 
 /**
@@ -307,6 +316,27 @@ export interface ThumbnailOptions {
   width?: number
   height?: number
   quality?: number
+  /**
+   * Upload generated thumbnails to storage alongside main files.
+   * Requires a storage adapter with standalone upload support.
+   *
+   * When enabled, after each file uploads, its thumbnail preview
+   * is converted to a Blob and uploaded using `storage.upload()`.
+   * The result is stored on `file.thumbnail`.
+   *
+   * @default false
+   */
+  upload?: boolean
+}
+
+/**
+ * Options for standalone upload (bypassing the useUploadKit pipeline)
+ */
+export interface StandaloneUploadOptions {
+  /** MIME type of the data being uploaded. Defaults to 'application/octet-stream'. */
+  contentType?: string
+  /** Progress callback (0-100) */
+  onProgress?: (percentage: number) => void
 }
 
 export interface ImageCompressionOptions {
@@ -465,6 +495,41 @@ export interface StoragePlugin<TUploadResult = any, TPluginEvents extends Record
   hooks: StoragePluginHooks<TUploadResult, TPluginEvents>
   options?: UploadOptions
   events?: TPluginEvents
+
+  /**
+   * Upload a raw Blob or File directly to storage, bypassing the useUploadKit pipeline.
+   *
+   * This is a low-level primitive for uploading arbitrary data without going through
+   * validation, preprocessing, or processing stages. Useful for:
+   * - Uploading edited/cropped images
+   * - Uploading thumbnails separately
+   * - Any scenario where you have a Blob and just need it in storage
+   *
+   * The `storageKey` is treated like a filename — the adapter prepends any configured
+   * path prefix (e.g., `options.path`), and the server-side SAS/presigned URL handler
+   * may further resolve it (e.g., prepend organization ID).
+   *
+   * @param data - The Blob or File to upload
+   * @param storageKey - Filename or relative path for the file in storage
+   * @param options - Optional content type and progress callback
+   * @returns The upload result with `url` and resolved `storageKey`
+   *
+   * @example
+   * ```typescript
+   * const storage = PluginAzureDataLake({ getSASUrl: ... })
+   *
+   * // Upload an edited image
+   * const result = await storage.upload(croppedBlob, 'edited_photo.jpg', {
+   *   contentType: 'image/jpeg',
+   * })
+   * console.log(result.storageKey) // Full resolved path in storage
+   * ```
+   */
+  upload: (
+    data: Blob | File,
+    storageKey: string,
+    options?: StandaloneUploadOptions,
+  ) => Promise<TUploadResult & { url: string; storageKey: string }>
 }
 
 /**

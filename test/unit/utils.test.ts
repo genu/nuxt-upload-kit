@@ -4,6 +4,8 @@ import {
   createFileError,
   calculateThumbnailDimensions,
   cleanupObjectURLs,
+  dataUrlToBlob,
+  deriveThumbnailKey,
 } from "../../src/runtime/composables/useUploadKit/utils"
 import { createMockLocalUploadFile } from "../helpers"
 import mitt from "mitt"
@@ -334,6 +336,72 @@ describe("utils", () => {
 
       expect(URL.revokeObjectURL).toHaveBeenCalledTimes(2)
       expect(urlMap.size).toBe(0)
+    })
+  })
+
+  describe("dataUrlToBlob", () => {
+    it("should convert a base64 JPEG data URL to a Blob", () => {
+      const dataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+      const blob = dataUrlToBlob(dataUrl)
+
+      expect(blob).toBeInstanceOf(Blob)
+      expect(blob.type).toBe("image/jpeg")
+      expect(blob.size).toBeGreaterThan(0)
+    })
+
+    it("should convert a base64 PNG data URL to a Blob", () => {
+      const dataUrl = "data:image/png;base64,iVBORw0KGgo="
+      const blob = dataUrlToBlob(dataUrl)
+
+      expect(blob).toBeInstanceOf(Blob)
+      expect(blob.type).toBe("image/png")
+    })
+
+    it("should preserve binary content correctly", () => {
+      // Encode known bytes to base64
+      const bytes = new Uint8Array([72, 101, 108, 108, 111]) // "Hello"
+      const base64 = btoa(String.fromCharCode(...bytes))
+      const dataUrl = `data:application/octet-stream;base64,${base64}`
+
+      const blob = dataUrlToBlob(dataUrl)
+
+      expect(blob.size).toBe(5)
+      expect(blob.type).toBe("application/octet-stream")
+    })
+
+    it("should throw for non-base64 data URLs", () => {
+      const plainDataUrl = "data:text/plain,Hello%20World"
+
+      expect(() => dataUrlToBlob(plainDataUrl)).toThrow("dataUrlToBlob only supports base64-encoded data URLs")
+    })
+
+    it("should extract MIME type from well-formed data URL", () => {
+      const dataUrl = "data:image/webp;base64,AAAA"
+      const blob = dataUrlToBlob(dataUrl)
+
+      expect(blob.type).toBe("image/webp")
+    })
+  })
+
+  describe("deriveThumbnailKey", () => {
+    it("should append _thumb before the file extension", () => {
+      expect(deriveThumbnailKey("1738345678901-abc123.jpg")).toBe("1738345678901-abc123_thumb.jpg")
+    })
+
+    it("should handle PNG extension", () => {
+      expect(deriveThumbnailKey("photo.png")).toBe("photo_thumb.png")
+    })
+
+    it("should handle multiple dots in filename", () => {
+      expect(deriveThumbnailKey("my.file.name.jpg")).toBe("my.file.name_thumb.jpg")
+    })
+
+    it("should append _thumb to files without extension", () => {
+      expect(deriveThumbnailKey("noextension")).toBe("noextension_thumb")
+    })
+
+    it("should handle WebP extension", () => {
+      expect(deriveThumbnailKey("image.webp")).toBe("image_thumb.webp")
     })
   })
 })

@@ -411,6 +411,74 @@ describe("providers", () => {
       })
     })
 
+    describe("standalone upload", () => {
+      it("should call getPresignedUploadUrl with the full storage key", async () => {
+        const getPresignedUploadUrl = vi.fn().mockResolvedValue({
+          uploadUrl: "https://bucket.s3.amazonaws.com/uploads/thumb.jpg?signature=xxx",
+          publicUrl: "https://bucket.s3.amazonaws.com/uploads/thumb.jpg",
+        })
+
+        const plugin = PluginS3({
+          getPresignedUploadUrl,
+          path: "uploads",
+        })
+
+        const blob = new Blob([new Uint8Array(512)], { type: "image/jpeg" })
+        await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(getPresignedUploadUrl).toHaveBeenCalledWith("uploads/thumb.jpg", "image/jpeg", {
+          fileName: "thumb.jpg",
+          fileSize: 512,
+        })
+      })
+
+      it("should return url and storageKey", async () => {
+        const getPresignedUploadUrl = vi.fn().mockResolvedValue({
+          uploadUrl: "https://bucket.s3.amazonaws.com/my-file.jpg?signature=xxx",
+          publicUrl: "https://bucket.s3.amazonaws.com/my-file.jpg",
+        })
+
+        const plugin = PluginS3({ getPresignedUploadUrl })
+        const blob = new Blob([new Uint8Array(256)], { type: "image/jpeg" })
+
+        const result = await plugin.upload(blob, "my-file.jpg")
+
+        expect(result).toHaveProperty("url", "https://bucket.s3.amazonaws.com/my-file.jpg")
+        expect(result).toHaveProperty("storageKey", "my-file.jpg")
+      })
+
+      it("should default contentType to application/octet-stream", async () => {
+        const getPresignedUploadUrl = vi.fn().mockResolvedValue({
+          uploadUrl: "https://bucket.s3.amazonaws.com/file?signature=xxx",
+          publicUrl: "https://bucket.s3.amazonaws.com/file",
+        })
+
+        const plugin = PluginS3({ getPresignedUploadUrl })
+        const blob = new Blob([new Uint8Array(100)])
+
+        await plugin.upload(blob, "file")
+
+        expect(getPresignedUploadUrl).toHaveBeenCalledWith("file", "application/octet-stream", expect.any(Object))
+      })
+
+      it("should include path prefix in storageKey", async () => {
+        const getPresignedUploadUrl = vi.fn().mockResolvedValue({
+          uploadUrl: "https://bucket.s3.amazonaws.com/images/thumb.jpg?sig=xxx",
+          publicUrl: "https://bucket.s3.amazonaws.com/images/thumb.jpg",
+        })
+
+        const plugin = PluginS3({
+          getPresignedUploadUrl,
+          path: "images",
+        })
+
+        const blob = new Blob([new Uint8Array(100)], { type: "image/jpeg" })
+        const result = await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(result.storageKey).toBe("images/thumb.jpg")
+      })
+    })
+
     describe("XHR upload", () => {
       it("should use PUT method for presigned URL upload", async () => {
         const getPresignedUploadUrl = vi.fn().mockResolvedValue({

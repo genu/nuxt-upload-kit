@@ -7,7 +7,7 @@ import {
   type FirebaseStorage,
   type UploadMetadata,
 } from "firebase/storage"
-import { defineStorageAdapter } from "../../types"
+import { defineStorageAdapter, type StandaloneUploadOptions } from "../../types"
 
 export interface FirebaseStorageOptions {
   /**
@@ -155,6 +155,14 @@ export const PluginFirebaseStorage = defineStorageAdapter<FirebaseStorageOptions
 
   return {
     id: "firebase-storage",
+
+    async upload(data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) {
+      const fullKey = buildFullStorageKey(storageKey)
+      const contentType = uploadOptions?.contentType || "application/octet-stream"
+
+      return uploadToFirebase(fullKey, data, contentType, storageKey, uploadOptions?.onProgress || (() => {}))
+    },
+
     hooks: {
       /**
        * Upload file to Firebase Storage

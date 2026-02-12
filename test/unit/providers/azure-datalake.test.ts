@@ -106,7 +106,8 @@ describe("providers", () => {
       })
 
       it("should default to directory mode when sr parameter is missing", () => {
-        const urlWithoutSr = "https://account.blob.core.windows.net/container?sv=2021-06-08&se=2030-01-01T00:00:00Z&sp=rwdl&sig=mock"
+        const urlWithoutSr =
+          "https://account.blob.core.windows.net/container?sv=2021-06-08&se=2030-01-01T00:00:00Z&sp=rwdl&sig=mock"
 
         expect(detectSasMode(urlWithoutSr)).toBe("directory")
       })
@@ -623,16 +624,73 @@ describe("providers", () => {
       })
     })
 
+    describe("standalone upload", () => {
+      it("should upload a raw blob and return url and storageKey", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const sasUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=mock`
+
+        const plugin = PluginAzureDataLake({
+          sasURL: sasUrl,
+          autoCreateDirectory: false,
+        })
+
+        const blob = new Blob([new Uint8Array(256)], { type: "image/jpeg" })
+        const result = await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(result).toHaveProperty("url")
+        expect(result).toHaveProperty("storageKey")
+        expect(result.url).toContain("thumb.jpg")
+      })
+
+      it("should default contentType to application/octet-stream", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const sasUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=mock`
+
+        const plugin = PluginAzureDataLake({
+          sasURL: sasUrl,
+          autoCreateDirectory: false,
+        })
+
+        const blob = new Blob([new Uint8Array(100)])
+        // Should not throw — contentType defaults internally
+        const result = await plugin.upload(blob, "data.bin")
+
+        expect(result).toHaveProperty("url")
+      })
+
+      it("should apply path prefix to standalone uploads", async () => {
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 1)
+        const sasUrl = `https://account.dfs.core.windows.net/container?sv=2021-06-08&se=${futureDate.toISOString()}&sr=d&sp=rcwd&sig=mock`
+
+        const plugin = PluginAzureDataLake({
+          sasURL: sasUrl,
+          path: "uploads",
+          autoCreateDirectory: false,
+        })
+
+        const blob = new Blob([new Uint8Array(100)], { type: "image/jpeg" })
+        const result = await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(result.storageKey).toContain("uploads")
+        expect(result.storageKey).toContain("thumb.jpg")
+      })
+    })
+
     describe("getSASUrl operation parameter", () => {
       it("should pass 'upload' operation when uploading a file", async () => {
         const futureDate = new Date()
         futureDate.setFullYear(futureDate.getFullYear() + 1)
 
-        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
-          Promise.resolve(
-            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=cw&sig=mock`,
-          ),
-        )
+        const getSASUrl = vi
+          .fn()
+          .mockImplementation((storageKey: string) =>
+            Promise.resolve(
+              `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=cw&sig=mock`,
+            ),
+          )
 
         const plugin = PluginAzureDataLake({ getSASUrl })
 
@@ -650,11 +708,13 @@ describe("providers", () => {
         const futureDate = new Date()
         futureDate.setFullYear(futureDate.getFullYear() + 1)
 
-        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
-          Promise.resolve(
-            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=r&sig=mock`,
-          ),
-        )
+        const getSASUrl = vi
+          .fn()
+          .mockImplementation((storageKey: string) =>
+            Promise.resolve(
+              `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=r&sig=mock`,
+            ),
+          )
 
         const plugin = PluginAzureDataLake({ getSASUrl })
         const context = createMockPluginContext()
@@ -668,11 +728,13 @@ describe("providers", () => {
         const futureDate = new Date()
         futureDate.setFullYear(futureDate.getFullYear() + 1)
 
-        const getSASUrl = vi.fn().mockImplementation((storageKey: string) =>
-          Promise.resolve(
-            `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=d&sig=mock`,
-          ),
-        )
+        const getSASUrl = vi
+          .fn()
+          .mockImplementation((storageKey: string) =>
+            Promise.resolve(
+              `https://account.blob.core.windows.net/container/${storageKey}?sv=2021-06-08&se=${futureDate.toISOString()}&sr=b&sp=d&sig=mock`,
+            ),
+          )
 
         const plugin = PluginAzureDataLake({ getSASUrl })
         const context = createMockPluginContext()

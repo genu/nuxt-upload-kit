@@ -811,6 +811,144 @@ describe("useUploadKit", () => {
     })
   })
 
+  describe("thumbnail upload", () => {
+    // Use PDF files so the PluginThumbnailGenerator (auto-added by thumbnails option)
+    // skips them during preprocess. We then manually set the preview to simulate a
+    // thumbnail data URL, testing only the upload-side logic.
+    it("should upload thumbnail when thumbnails.upload is true and storage has upload()", async () => {
+      const standaloneUpload = vi.fn().mockResolvedValue({
+        url: "https://example.com/uploads/thumb.jpg",
+        storageKey: "uploads/thumb.jpg",
+      })
+
+      const storagePlugin: StoragePlugin = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://example.com/uploads/file.pdf",
+            storageKey: "uploads/file.pdf",
+          }),
+        },
+        upload: standaloneUpload,
+      }
+
+      const uploader = useUploadKit({
+        storage: storagePlugin,
+        thumbnails: { upload: true },
+      })
+
+      await uploader.addFile(createMockFile("test.pdf", 1024, "application/pdf"))
+
+      // Manually set a data URL preview to simulate an externally-generated thumbnail
+      const fileId = uploader.files.value[0]!.id
+      uploader.updateFile(fileId, { preview: "data:image/jpeg;base64,/9j/4AAQSkZJRg==" })
+
+      await uploader.upload()
+
+      expect(standaloneUpload).toHaveBeenCalledTimes(1)
+      expect(standaloneUpload).toHaveBeenCalledWith(
+        expect.any(Blob),
+        expect.stringContaining("_thumb"),
+        expect.objectContaining({ contentType: "image/jpeg" }),
+      )
+
+      const file = uploader.files.value[0]!
+      expect(file.status).toBe("complete")
+      expect(file.thumbnail).toBeDefined()
+      expect(file.thumbnail!.url).toBe("https://example.com/uploads/thumb.jpg")
+      expect(file.thumbnail!.storageKey).toBe("uploads/thumb.jpg")
+    })
+
+    it("should not upload thumbnail when thumbnails.upload is not set", async () => {
+      const standaloneUpload = vi.fn()
+
+      const storagePlugin: StoragePlugin = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://example.com/file.pdf",
+            storageKey: "file.pdf",
+          }),
+        },
+        upload: standaloneUpload,
+      }
+
+      const uploader = useUploadKit({
+        storage: storagePlugin,
+        thumbnails: true, // Generate thumbnails but don't upload
+      })
+
+      await uploader.addFile(createMockFile("test.pdf", 1024, "application/pdf"))
+      const fileId = uploader.files.value[0]!.id
+      uploader.updateFile(fileId, { preview: "data:image/jpeg;base64,/9j/4AAQSkZJRg==" })
+
+      await uploader.upload()
+
+      expect(standaloneUpload).not.toHaveBeenCalled()
+      expect(uploader.files.value[0]!.thumbnail).toBeUndefined()
+    })
+
+    it("should skip thumbnail upload when preview is not a data URL", async () => {
+      const standaloneUpload = vi.fn()
+
+      const storagePlugin: StoragePlugin = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://example.com/file.pdf",
+            storageKey: "file.pdf",
+          }),
+        },
+        upload: standaloneUpload,
+      }
+
+      const uploader = useUploadKit({
+        storage: storagePlugin,
+        thumbnails: { upload: true },
+      })
+
+      await uploader.addFile(createMockFile("test.pdf", 1024, "application/pdf"))
+      const fileId = uploader.files.value[0]!.id
+      // Preview is a URL, not a data URL
+      uploader.updateFile(fileId, { preview: "https://example.com/preview.jpg" })
+
+      await uploader.upload()
+
+      expect(standaloneUpload).not.toHaveBeenCalled()
+    })
+
+    it("should complete main upload even if thumbnail upload fails", async () => {
+      const standaloneUpload = vi.fn().mockRejectedValue(new Error("Thumbnail upload network error"))
+
+      const storagePlugin: StoragePlugin = {
+        id: "mock-storage",
+        hooks: {
+          upload: vi.fn().mockResolvedValue({
+            url: "https://example.com/file.pdf",
+            storageKey: "file.pdf",
+          }),
+        },
+        upload: standaloneUpload,
+      }
+
+      const uploader = useUploadKit({
+        storage: storagePlugin,
+        thumbnails: { upload: true },
+      })
+
+      await uploader.addFile(createMockFile("test.pdf", 1024, "application/pdf"))
+      const fileId = uploader.files.value[0]!.id
+      uploader.updateFile(fileId, { preview: "data:image/jpeg;base64,/9j/4AAQSkZJRg==" })
+
+      await uploader.upload()
+
+      const file = uploader.files.value[0]!
+      expect(file.status).toBe("complete")
+      expect(file.remoteUrl).toBe("https://example.com/file.pdf")
+      expect(file.thumbnail).toBeUndefined()
+    })
+  })
+
   describe("addPlugin", () => {
     it("should allow adding plugins dynamically", async () => {
       const uploader = useUploadKit()

@@ -1,4 +1,4 @@
-import { defineStorageAdapter } from "../../types"
+import { defineStorageAdapter, type StandaloneUploadOptions } from "../../types"
 
 export interface S3Options {
   /**
@@ -142,6 +142,27 @@ export const PluginS3 = defineStorageAdapter<S3Options, S3UploadResult>((options
 
   return {
     id: "s3-storage",
+
+    async upload(data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) {
+      return withRetry(async () => {
+        const fullKey = buildFullStorageKey(storageKey)
+        const contentType = uploadOptions?.contentType || "application/octet-stream"
+
+        const { uploadUrl, publicUrl } = await options.getPresignedUploadUrl(fullKey, contentType, {
+          fileName: storageKey,
+          fileSize: data.size,
+        })
+
+        const etag = await uploadWithProgress(uploadUrl, data, contentType, uploadOptions?.onProgress || (() => {}))
+
+        return {
+          url: publicUrl,
+          storageKey: fullKey,
+          etag,
+        } satisfies S3UploadResult
+      }, `Standalone upload "${storageKey}"`)
+    },
+
     hooks: {
       /**
        * Upload file to S3 using presigned URL

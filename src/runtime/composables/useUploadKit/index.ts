@@ -15,7 +15,7 @@ import type {
 } from "./types"
 import { ValidatorAllowedFileTypes, ValidatorMaxFileSize, ValidatorMaxFiles } from "./validators"
 import { PluginThumbnailGenerator, PluginImageCompressor } from "./plugins"
-import { createPluginContext, createFileError, getExtension, setupInitialFiles } from "./utils"
+import { createPluginContext, createFileError, getExtension, setupInitialFiles, dataUrlToBlob, deriveThumbnailKey } from "./utils"
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
 
@@ -95,6 +95,13 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
       }),
     )
   }
+
+  // Determine if thumbnails should be auto-uploaded
+  const shouldUploadThumbnails =
+    options.thumbnails !== false &&
+    options.thumbnails !== undefined &&
+    typeof options.thumbnails === "object" &&
+    options.thumbnails.upload === true
 
   // Create plugin runner
   const { getPluginEmitFn, runPluginStage } = createPluginRunner({ options, files, emitter })
@@ -281,7 +288,25 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     const preview = currentFile?.preview || remoteUrl
     const storageKey = extractStorageKey(uploadResult)
 
-    updateFile(processedFile.id, { status: "complete", uploadResult, remoteUrl, preview, storageKey })
+    // Upload thumbnail if enabled and preview is a data URL
+    let thumbnail: { url: string; storageKey: string } | undefined
+    if (shouldUploadThumbnails && currentFile?.preview?.startsWith("data:")) {
+      try {
+        const thumbnailBlob = dataUrlToBlob(currentFile.preview)
+        const thumbnailKey = deriveThumbnailKey(processedFile.id)
+        const thumbnailResult = await storagePlugin.upload(thumbnailBlob, thumbnailKey, {
+          contentType: thumbnailBlob.type,
+        })
+        thumbnail = { url: thumbnailResult.url, storageKey: thumbnailResult.storageKey }
+      } catch (err) {
+        // Thumbnail upload failure is non-fatal — log and continue
+        if (import.meta.dev) {
+          console.warn(`[useUploadKit] Thumbnail upload failed for "${processedFile.name}":`, err)
+        }
+      }
+    }
+
+    updateFile(processedFile.id, { status: "complete", uploadResult, remoteUrl, preview, storageKey, thumbnail })
   }
 
   // Define upload function

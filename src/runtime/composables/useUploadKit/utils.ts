@@ -75,6 +75,34 @@ export function calculateThumbnailDimensions(
 }
 
 /**
+ * Convert a base64-encoded data URL (e.g., from canvas.toDataURL) to a Blob.
+ * Only supports base64-encoded data URLs (`;base64,` format).
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  if (!dataUrl.includes(";base64,")) {
+    throw new Error("dataUrlToBlob only supports base64-encoded data URLs")
+  }
+  const [header, base64] = dataUrl.split(",")
+  const mimeType = header.match(/:(.*?);/)?.[1] ?? "image/jpeg"
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new Blob([bytes], { type: mimeType })
+}
+
+/**
+ * Derive a thumbnail storage key from a file ID by appending '_thumb' before the extension
+ * @example "1738345678901-abc123.jpg" → "1738345678901-abc123_thumb.jpg"
+ */
+export function deriveThumbnailKey(fileId: string): string {
+  const lastDot = fileId.lastIndexOf(".")
+  if (lastDot === -1) return `${fileId}_thumb`
+  return `${fileId.slice(0, lastDot)}_thumb${fileId.slice(lastDot)}`
+}
+
+/**
  * Cleanup object URLs to prevent memory leaks
  * @param urlMap Map of file IDs to object URLs
  * @param fileId Optional file ID to cleanup specific URL, or cleanup all if not provided

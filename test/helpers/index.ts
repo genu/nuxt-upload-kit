@@ -210,6 +210,7 @@ export function createMockStoragePlugin(options?: {
 
   return {
     id: "mock-storage",
+    upload: vi.fn(async () => ({ url: "https://example.com/standalone.jpg", storageKey: "uploads/standalone.jpg" })),
     hooks: {
       upload: vi.fn(async (file: UploadFile, context: { onProgress: (p: number) => void }) => {
         const result = await uploadFn(file, context.onProgress)

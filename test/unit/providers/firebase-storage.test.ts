@@ -9,7 +9,10 @@ vi.mock("firebase/storage", () => ({
     fullPath: "uploads/test.jpg",
   }),
   uploadBytesResumable: vi.fn().mockReturnValue({
-    on: vi.fn(),
+    on: vi.fn().mockImplementation((_event: string, _progress: any, _error: any, complete: () => void) => {
+      // Simulate immediate completion so the upload Promise resolves
+      complete()
+    }),
     snapshot: {
       ref: { fullPath: "uploads/test.jpg" },
       metadata: {
@@ -286,6 +289,44 @@ describe("providers", () => {
         }
 
         expect(uploadResult.storageKey).toBe("my-file.jpg")
+      })
+    })
+
+    describe("standalone upload", () => {
+      it("should return url and storageKey", async () => {
+        const plugin = PluginFirebaseStorage({
+          storage: mockStorage,
+        })
+
+        const blob = new Blob([new Uint8Array(256)], { type: "image/jpeg" })
+        const result = await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(result).toHaveProperty("url")
+        expect(result).toHaveProperty("storageKey")
+      })
+
+      it("should apply path prefix to standalone uploads", async () => {
+        const plugin = PluginFirebaseStorage({
+          storage: mockStorage,
+          path: "uploads",
+        })
+
+        const blob = new Blob([new Uint8Array(100)], { type: "image/jpeg" })
+        const result = await plugin.upload(blob, "thumb.jpg", { contentType: "image/jpeg" })
+
+        expect(result.storageKey).toBe("uploads/thumb.jpg")
+      })
+
+      it("should default contentType to application/octet-stream", async () => {
+        const plugin = PluginFirebaseStorage({
+          storage: mockStorage,
+        })
+
+        const blob = new Blob([new Uint8Array(100)])
+        // Should not throw — contentType defaults internally
+        const result = await plugin.upload(blob, "data.bin")
+
+        expect(result).toHaveProperty("url")
       })
     })
 

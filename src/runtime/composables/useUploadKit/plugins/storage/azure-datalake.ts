@@ -1,6 +1,6 @@
 import { ref } from "vue"
 import { DataLakeDirectoryClient, DataLakeFileClient, type PathHttpHeaders } from "@azure/storage-file-datalake"
-import { defineStorageAdapter } from "../../types"
+import { defineStorageAdapter, type StandaloneUploadOptions } from "../../types"
 
 export interface AzureDataLakeOptions {
   /**
@@ -231,6 +231,34 @@ export const PluginAzureDataLake = defineStorageAdapter<AzureDataLakeOptions, Az
 
   return {
     id: "azure-datalake-storage",
+
+    async upload(data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) {
+      const requestKey = buildFullStorageKey(storageKey, true)
+      const fileClient = await getFileClient(requestKey, "upload")
+
+      const contentType = uploadOptions?.contentType || "application/octet-stream"
+
+      await fileClient.upload(data, {
+        pathHttpHeaders: {
+          ...options.pathHttpHeaders,
+          contentType,
+        },
+        onProgress: uploadOptions?.onProgress
+          ? ({ loadedBytes }: { loadedBytes: number }) => {
+              const percentage = Math.round((loadedBytes / data.size) * 100)
+              uploadOptions.onProgress!(percentage)
+            }
+          : undefined,
+      })
+
+      const actualStorageKey = getBlobPathFromUrl(fileClient.url) || requestKey
+
+      return {
+        url: fileClient.url,
+        storageKey: actualStorageKey,
+      } satisfies AzureUploadResult
+    },
+
     hooks: {
       /**
        * Upload file to Azure Blob Storage
