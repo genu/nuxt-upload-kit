@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.26](https://github.com/genu/nuxt-upload-kit/compare/v0.1.25...v0.1.26) (2026-02-13)
+
+
+### Features
+
+* add appendExistingFiles to unify multi-source file tracking ([#45](https://github.com/genu/nuxt-upload-kit/issues/45)) ([294852f](https://github.com/genu/nuxt-upload-kit/commit/294852f83047d2be44768f56081c4d734a78edce))
+
 ## [0.1.25](https://github.com/genu/nuxt-upload-kit/compare/v0.1.24...v0.1.25) (2026-02-13)
 
 
