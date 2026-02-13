@@ -380,6 +380,11 @@ export type PluginContext<TPluginEvents extends Record<string, any> = Record<str
   files: UploadFile[]
   options: UploadOptions
   /**
+   * Storage plugin for uploading derivatives (thumbnails, variants, etc.)
+   * Available only when a storage plugin is configured
+   */
+  storage?: StoragePlugin<any, any>
+  /**
    * Emit custom plugin events
    * Events are automatically prefixed with the plugin ID
    */

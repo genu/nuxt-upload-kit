@@ -9,6 +9,7 @@ import type {
   ProcessingHook,
   SetupHook,
   PluginContext,
+  StoragePlugin,
 } from "./types"
 
 type EmitFn = <K extends string | number | symbol>(event: K, payload: any) => void
@@ -17,6 +18,7 @@ export interface PluginRunnerDeps<TUploadResult = any> {
   options: UploadOptions
   files: Ref<UploadFile<TUploadResult>[]>
   emitter: Emitter<any>
+  getStoragePlugin: () => StoragePlugin<any, any> | null
 }
 
 /**
@@ -27,7 +29,7 @@ export interface PluginRunnerDeps<TUploadResult = any> {
  * - With caching: Only 5 function allocations total
  */
 export function createPluginRunner<TUploadResult = any>(deps: PluginRunnerDeps<TUploadResult>) {
-  const { options, files, emitter } = deps
+  const { options, files, emitter, getStoragePlugin } = deps
 
   // Cache for plugin emit functions
   const pluginEmitFunctions = new Map<string, EmitFn>()
@@ -89,9 +91,11 @@ export function createPluginRunner<TUploadResult = any>(deps: PluginRunnerDeps<T
       if (!hook) continue
 
       try {
+        const storage = getStoragePlugin()
         const context: PluginContext = {
           files: files.value,
           options,
+          storage: storage || undefined,
           emit: getPluginEmitFn(plugin.id),
         }
 

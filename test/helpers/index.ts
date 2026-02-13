@@ -87,10 +87,12 @@ export function createMockRemoteUploadFile(overrides: Partial<RemoteUploadFile> 
 export function createMockPluginContext<TEvents extends Record<string, any> = Record<string, any>>(
   files: UploadFile[] = [],
   options: UploadOptions = {},
+  storage?: StoragePlugin<any, any>,
 ): PluginContext<TEvents> {
   return {
     files,
     options,
+    storage,
     emit: vi.fn(),
   }
 }

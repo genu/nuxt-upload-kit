@@ -537,6 +537,7 @@ describe("events", () => {
       const handler = vi.fn()
       const mockStorage = {
         id: "mock-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           getRemoteFile: async (fileId: string) => ({
@@ -570,6 +571,7 @@ describe("events", () => {
       const handler = vi.fn()
       const mockStorage = {
         id: "mock-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           getRemoteFile: async (fileId: string) => ({
@@ -597,6 +599,7 @@ describe("events", () => {
       const handler = vi.fn()
       const mockStorage = {
         id: "mock-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           getRemoteFile: async () => {
@@ -620,6 +623,7 @@ describe("events", () => {
       const handler = vi.fn()
       const mockStorage = {
         id: "mock-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           getRemoteFile: async () => {

@@ -1,5 +1,5 @@
 import { isRef, toValue, watch } from "vue"
-import type { PluginContext, UploadFile, FileError, UploadOptions, InitialFileInput } from "./types"
+import type { PluginContext, UploadFile, FileError, UploadOptions, InitialFileInput, StoragePlugin } from "./types"
 import type { Emitter } from "mitt"
 
 /**
@@ -23,10 +23,12 @@ export function createPluginContext<TPluginEvents extends Record<string, any> = 
   files: UploadFile[],
   options: UploadOptions,
   emitter: Emitter<any>,
+  storage?: StoragePlugin<any, any>,
 ): PluginContext<TPluginEvents> {
   return {
     files,
     options,
+    storage,
     emit: (event, payload) => {
       const prefixedEvent = `${pluginId}:${String(event)}` as any
       emitter.emit(prefixedEvent, payload)

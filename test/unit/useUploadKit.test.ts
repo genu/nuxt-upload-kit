@@ -186,6 +186,7 @@ describe("useUploadKit", () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           remove: removeHook,
@@ -220,6 +221,7 @@ describe("useUploadKit", () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           remove: removeHook,
@@ -252,6 +254,7 @@ describe("useUploadKit", () => {
       })
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: uploadHook,
           remove: removeHook,
@@ -295,6 +298,7 @@ describe("useUploadKit", () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn(),
           remove: removeHook,
@@ -547,6 +551,7 @@ describe("useUploadKit", () => {
     it("should set file.storageKey after successful upload (id remains stable)", async () => {
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn().mockResolvedValue({
             url: "https://storage.example.com/uploads/images/uploaded.jpg",
@@ -589,6 +594,7 @@ describe("useUploadKit", () => {
       const removeHook = vi.fn()
       const storagePlugin: StoragePlugin = {
         id: "test-storage",
+        upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
         hooks: {
           upload: vi.fn().mockResolvedValue({
             url: "https://storage.example.com/uploads/uploaded.jpg",
@@ -1172,6 +1178,7 @@ describe("useUploadKit", () => {
         initialFiles: ["path/to/image.jpg", "path/to/video.mp4"],
         storage: {
           id: "mock-azure-storage",
+          upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "uploads/file.jpg" }),
           hooks: {
             upload: vi.fn().mockResolvedValue({ url: "https://example.com/uploaded.jpg", storageKey: "uploaded.jpg" }),
             getRemoteFile: async (fileId: string) => ({

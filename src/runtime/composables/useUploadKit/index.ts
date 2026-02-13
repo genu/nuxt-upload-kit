@@ -15,7 +15,7 @@ import type {
 } from "./types"
 import { ValidatorAllowedFileTypes, ValidatorMaxFileSize, ValidatorMaxFiles } from "./validators"
 import { PluginThumbnailGenerator, PluginImageCompressor } from "./plugins"
-import { createPluginContext, createFileError, getExtension, setupInitialFiles, dataUrlToBlob, deriveThumbnailKey } from "./utils"
+import { createPluginContext, createFileError, getExtension, setupInitialFiles } from "./utils"
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
 
@@ -78,6 +78,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
         maxWidth: thumbOpts.width ?? 128,
         maxHeight: thumbOpts.height ?? 128,
         quality: thumbOpts.quality ?? 1,
+        upload: thumbOpts.upload ?? false,
       }),
     )
   }
@@ -96,15 +97,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     )
   }
 
-  // Determine if thumbnails should be auto-uploaded
-  const shouldUploadThumbnails =
-    options.thumbnails !== false &&
-    options.thumbnails !== undefined &&
-    typeof options.thumbnails === "object" &&
-    options.thumbnails.upload === true
-
   // Create plugin runner
-  const { getPluginEmitFn, runPluginStage } = createPluginRunner({ options, files, emitter })
+  const { getPluginEmitFn, runPluginStage } = createPluginRunner({ options, files, emitter, getStoragePlugin })
 
   // Upload function holder - assigned after upload() is defined below
   const uploadHolder: { fn: () => Promise<void> } = { fn: async () => {} }
@@ -149,7 +143,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
           throw new Error("Storage plugin with getRemoteFile hook is required to initialize existing files")
         }
 
-        const context = createPluginContext(storagePlugin.id, files.value, options, emitter)
+        const context = createPluginContext(storagePlugin.id, files.value, options, emitter, storagePlugin)
         const remoteFileData = await storagePlugin.hooks.getRemoteFile(storageKey, context)
 
         const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -288,23 +282,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     const preview = currentFile?.preview || remoteUrl
     const storageKey = extractStorageKey(uploadResult)
 
-    // Upload thumbnail if enabled and preview is a data URL
-    let thumbnail: { url: string; storageKey: string } | undefined
-    if (shouldUploadThumbnails && currentFile?.preview?.startsWith("data:")) {
-      try {
-        const thumbnailBlob = dataUrlToBlob(currentFile.preview)
-        const thumbnailKey = deriveThumbnailKey(processedFile.id)
-        const thumbnailResult = await storagePlugin.upload(thumbnailBlob, thumbnailKey, {
-          contentType: thumbnailBlob.type,
-        })
-        thumbnail = { url: thumbnailResult.url, storageKey: thumbnailResult.storageKey }
-      } catch (err) {
-        // Thumbnail upload failure is non-fatal — log and continue
-        if (import.meta.dev) {
-          console.warn(`[useUploadKit] Thumbnail upload failed for "${processedFile.name}":`, err)
-        }
-      }
-    }
+    // Get thumbnail from file if it was uploaded by the thumbnail plugin
+    const thumbnail = currentFile?.thumbnail
 
     updateFile(processedFile.id, { status: "complete", uploadResult, remoteUrl, preview, storageKey, thumbnail })
   }

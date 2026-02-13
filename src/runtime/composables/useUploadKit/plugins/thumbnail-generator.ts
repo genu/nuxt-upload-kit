@@ -1,11 +1,12 @@
 import { defineProcessingPlugin } from "../types"
-import { calculateThumbnailDimensions } from "../utils"
+import { calculateThumbnailDimensions, dataUrlToBlob, deriveThumbnailKey } from "../utils"
 
 interface ThumbnailGeneratorOptions {
   maxWidth?: number
   maxHeight?: number
   quality?: number
   videoCaptureTime?: number
+  upload?: boolean
 }
 
 export const PluginThumbnailGenerator = defineProcessingPlugin<ThumbnailGeneratorOptions>((pluginOptions) => {
@@ -54,6 +55,29 @@ export const PluginThumbnailGenerator = defineProcessingPlugin<ThumbnailGenerato
         } finally {
           // Always clean up the object URL
           URL.revokeObjectURL(sourceUrl)
+        }
+
+        return file
+      },
+
+      process: async (file, context) => {
+        const { upload = false } = pluginOptions
+
+        // Upload thumbnail if enabled and storage is available
+        if (upload && context.storage && file.preview?.startsWith("data:")) {
+          try {
+            const thumbnailBlob = dataUrlToBlob(file.preview)
+            const thumbnailKey = deriveThumbnailKey(file.id)
+            const thumbnailResult = await context.storage.upload(thumbnailBlob, thumbnailKey, {
+              contentType: thumbnailBlob.type,
+            })
+            file.thumbnail = { url: thumbnailResult.url, storageKey: thumbnailResult.storageKey }
+          } catch (err) {
+            // Thumbnail upload failure is non-fatal — log and continue
+            if (import.meta.dev) {
+              console.warn(`[thumbnail-generator] Thumbnail upload failed for "${file.name}":`, err)
+            }
+          }
         }
 
         return file

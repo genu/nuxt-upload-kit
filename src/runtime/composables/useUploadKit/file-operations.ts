@@ -247,7 +247,7 @@ export function createFileOperations<TUploadResult = any>(deps: FileOperationsDe
       const storagePlugin = getStoragePlugin()
       if (storagePlugin?.hooks.remove) {
         try {
-          const context = createPluginContext(storagePlugin.id, files.value, options, emitter)
+          const context = createPluginContext(storagePlugin.id, files.value, options, emitter, storagePlugin)
           await storagePlugin.hooks.remove(file, context)
         } catch (error) {
           console.error(`Storage plugin remove error:`, error)

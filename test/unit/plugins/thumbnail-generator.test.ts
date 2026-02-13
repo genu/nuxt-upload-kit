@@ -45,12 +45,12 @@ describe("PluginThumbnailGenerator", () => {
       expect(plugin).toBeDefined()
     })
 
-    it("should have preprocess hook only", () => {
+    it("should have preprocess and process hooks", () => {
       const plugin = PluginThumbnailGenerator({})
 
       expect(plugin.hooks.preprocess).toBeDefined()
+      expect(plugin.hooks.process).toBeDefined()
       expect(plugin.hooks.validate).toBeUndefined()
-      expect(plugin.hooks.process).toBeUndefined()
       expect(plugin.hooks.complete).toBeUndefined()
     })
   })
