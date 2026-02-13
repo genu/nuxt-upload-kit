@@ -789,6 +789,211 @@ describe("useUploadKit", () => {
     })
   })
 
+  describe("appendExistingFiles", () => {
+    const defaultGetRemoteFileFn = async (storageKey: string) => ({
+      size: 2048,
+      mimeType: storageKey.endsWith(".png") ? "image/png" : "image/jpeg",
+      remoteUrl: `https://storage.example.com/${storageKey}`,
+    })
+
+    it("should append remote files without replacing existing local files", async () => {
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+
+      await uploader.addFile(createMockFile("local.jpg"))
+      const added = await uploader.appendExistingFiles([{ storageKey: "remote-1.png" }, { storageKey: "remote-2.png" }])
+
+      expect(added).toHaveLength(2)
+      expect(uploader.files.value).toHaveLength(3)
+
+      // Original local file preserved at index 0
+      expect(uploader.files.value[0]!.source).toBe("local")
+      expect(uploader.files.value[0]!.name).toBe("local.jpg")
+
+      // Appended files are complete remote files
+      const appended = uploader.files.value.slice(1)
+      for (const file of appended) {
+        expect(file.source).toBe("storage")
+        expect(file.status).toBe("complete")
+        expect(file.progress.percentage).toBe(100)
+        expect(file.data).toBeNull()
+        expect(file.remoteUrl).toMatch(/^https:\/\/storage\.example\.com\//)
+      }
+    })
+
+    it("should set correct metadata from storage plugin on appended files", async () => {
+      const storage = createMockStoragePlugin({
+        getRemoteFileFn: async (storageKey) => ({
+          size: 4096,
+          mimeType: "image/webp",
+          remoteUrl: `https://cdn.example.com/${storageKey}`,
+          preview: `https://cdn.example.com/thumbs/${storageKey}`,
+          uploadResult: { storageKey, bucket: "media" },
+        }),
+      })
+      const uploader = useUploadKit({ storage })
+
+      const added = await uploader.appendExistingFiles([{ storageKey: "photos/pic.webp" }])
+
+      expect(added).toHaveLength(1)
+      const file = added[0]!
+      expect(file.size).toBe(4096)
+      expect(file.mimeType).toBe("image/webp")
+      expect(file.name).toBe("pic.webp")
+      expect(file.storageKey).toBe("photos/pic.webp")
+      expect(file.remoteUrl).toBe("https://cdn.example.com/photos/pic.webp")
+      expect(file.preview).toBe("https://cdn.example.com/thumbs/photos/pic.webp")
+      expect(file.uploadResult).toEqual({ storageKey: "photos/pic.webp", bucket: "media" })
+    })
+
+    it("should skip duplicates already present by storageKey", async () => {
+      const getRemoteFileFn = vi.fn(defaultGetRemoteFileFn)
+      const storage = createMockStoragePlugin({ getRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+
+      await uploader.initializeExistingFiles([{ storageKey: "existing.png" }])
+      getRemoteFileFn.mockClear()
+
+      const added = await uploader.appendExistingFiles([{ storageKey: "existing.png" }, { storageKey: "new.png" }])
+
+      expect(added).toHaveLength(1)
+      expect(added[0]!.storageKey).toBe("new.png")
+      expect(uploader.files.value).toHaveLength(2)
+      // Should only call getRemoteFile for the non-duplicate
+      expect(getRemoteFileFn).toHaveBeenCalledTimes(1)
+      expect(getRemoteFileFn).toHaveBeenCalledWith("new.png")
+    })
+
+    it("should deduplicate against uploaded local files that have storageKey", async () => {
+      const storage = createMockStoragePlugin({
+        getRemoteFileFn: defaultGetRemoteFileFn,
+        uploadFn: async () => ({
+          url: "https://storage.example.com/uploads/local.jpg",
+          storageKey: "uploads/local.jpg",
+        }),
+      })
+      const uploader = useUploadKit({ storage })
+
+      // Add and upload a local file so it gets a storageKey
+      await uploader.addFile(createMockFile("local.jpg"))
+      await uploader.upload()
+      expect(uploader.files.value[0]!.storageKey).toBe("uploads/local.jpg")
+
+      // Appending the same storageKey should be deduplicated
+      const added = await uploader.appendExistingFiles([{ storageKey: "uploads/local.jpg" }])
+
+      expect(added).toHaveLength(0)
+      expect(uploader.files.value).toHaveLength(1)
+    })
+
+    it("should respect maxFiles limit and preserve insertion order", async () => {
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
+      const uploader = useUploadKit({ storage, maxFiles: 3 })
+
+      await uploader.addFile(createMockFile("file1.jpg"))
+      await uploader.addFile(createMockFile("file2.jpg"))
+
+      // Only 1 slot available — should take the first from the input
+      const added = await uploader.appendExistingFiles([
+        { storageKey: "remote-1.jpg" },
+        { storageKey: "remote-2.jpg" },
+        { storageKey: "remote-3.jpg" },
+      ])
+
+      expect(added).toHaveLength(1)
+      expect(added[0]!.storageKey).toBe("remote-1.jpg")
+      expect(uploader.files.value).toHaveLength(3)
+    })
+
+    it("should return empty array when maxFiles is already reached", async () => {
+      const getRemoteFileFn = vi.fn(defaultGetRemoteFileFn)
+      const storage = createMockStoragePlugin({ getRemoteFileFn })
+      const uploader = useUploadKit({ storage, maxFiles: 1 })
+
+      await uploader.addFile(createMockFile("file1.jpg"))
+      getRemoteFileFn.mockClear()
+
+      const added = await uploader.appendExistingFiles([{ storageKey: "remote-1.jpg" }])
+
+      expect(added).toHaveLength(0)
+      // Should not make any network calls when limit is reached
+      expect(getRemoteFileFn).not.toHaveBeenCalled()
+    })
+
+    it("should emit file:added for each appended file", async () => {
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+      const handler = vi.fn()
+
+      uploader.on("file:added", handler)
+      await uploader.appendExistingFiles([{ storageKey: "remote-1.jpg" }, { storageKey: "remote-2.jpg" }])
+
+      expect(handler).toHaveBeenCalledTimes(2)
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "remote-1.jpg" }))
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "remote-2.jpg" }))
+    })
+
+    it("should not emit file:added when all files are duplicates", async () => {
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+
+      await uploader.initializeExistingFiles([{ storageKey: "file-a.jpg" }])
+
+      const handler = vi.fn()
+      uploader.on("file:added", handler)
+      const added = await uploader.appendExistingFiles([{ storageKey: "file-a.jpg" }])
+
+      expect(added).toHaveLength(0)
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it("should handle multiple sequential appends correctly", async () => {
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+
+      await uploader.appendExistingFiles([{ storageKey: "batch-1.jpg" }])
+      await uploader.appendExistingFiles([{ storageKey: "batch-2.jpg" }])
+      await uploader.appendExistingFiles([{ storageKey: "batch-1.jpg" }, { storageKey: "batch-3.jpg" }])
+
+      expect(uploader.files.value).toHaveLength(3)
+      expect(uploader.files.value.map((f) => f.storageKey)).toEqual(["batch-1.jpg", "batch-2.jpg", "batch-3.jpg"])
+    })
+
+    it("should throw if no storage plugin with getRemoteFile is configured", async () => {
+      const uploader = useUploadKit()
+
+      await expect(uploader.appendExistingFiles([{ storageKey: "remote.jpg" }])).rejects.toThrow(
+        "Storage plugin with getRemoteFile hook is required",
+      )
+    })
+
+    it("should skip entries with empty storageKey without calling storage", async () => {
+      const getRemoteFileFn = vi.fn(defaultGetRemoteFileFn)
+      const storage = createMockStoragePlugin({ getRemoteFileFn })
+      const uploader = useUploadKit({ storage })
+
+      const added = await uploader.appendExistingFiles([{ storageKey: "" }, { storageKey: "valid.jpg" }])
+
+      expect(added).toHaveLength(1)
+      expect(added[0]!.storageKey).toBe("valid.jpg")
+      expect(getRemoteFileFn).toHaveBeenCalledTimes(1)
+    })
+
+    it("should allow removal of appended files via removeFile", async () => {
+      const removeHook = vi.fn()
+      const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn, removeFn: removeHook })
+      const uploader = useUploadKit({ storage })
+
+      const added = await uploader.appendExistingFiles([{ storageKey: "library/photo.jpg" }])
+      expect(uploader.files.value).toHaveLength(1)
+
+      await uploader.removeFile(added[0]!.id)
+
+      expect(uploader.files.value).toHaveLength(0)
+      expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "library/photo.jpg" }))
+    })
+  })
+
   describe("event system", () => {
     it("should allow registering and receiving events", async () => {
       const uploader = useUploadKit()
