@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.25](https://github.com/genu/nuxt-upload-kit/compare/v0.1.24...v0.1.25) (2026-02-13)
+
+
+### Features
+
+* add thumbnail upload option to the thumbnail generator plugin and update related contexts ([16d1869](https://github.com/genu/nuxt-upload-kit/commit/16d18693139b5560382194f07f39cc119e68ec57))
+
 ## [0.1.24](https://github.com/genu/nuxt-upload-kit/compare/v0.1.23...v0.1.24) (2026-02-12)
 
 
