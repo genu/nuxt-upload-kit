@@ -1,5 +1,4 @@
-import { FFmpeg } from "@ffmpeg/ffmpeg"
-import { fetchFile, toBlobURL } from "@ffmpeg/util"
+import type { FFmpeg } from "@ffmpeg/ffmpeg"
 import { ref } from "vue"
 
 interface FFMPegOptions {
@@ -15,7 +14,8 @@ const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
 
 export const useFFMpeg = (options: FFMPegOptions) => {
   options = { ...defaultOptions, ...options }
-  const ffmpeg = new FFmpeg()
+  let ffmpeg: FFmpeg
+  let _fetchFile: (typeof import("@ffmpeg/util"))["fetchFile"]
   const status = ref<"paused" | "converting" | "success" | "error">("paused")
   const progress = ref(0)
   const originalFile = ref<Uint8Array>()
@@ -23,11 +23,17 @@ export const useFFMpeg = (options: FFMPegOptions) => {
 
   let _onConvertSuccess: ((file: File) => void) | undefined
 
-  ffmpeg.on("progress", ({ time }) => {
-    progress.value = time / 1000000
-  })
-
   const load = async () => {
+    const { FFmpeg } = await import("@ffmpeg/ffmpeg")
+    const { toBlobURL, fetchFile } = await import("@ffmpeg/util")
+
+    _fetchFile = fetchFile
+    ffmpeg = new FFmpeg()
+
+    ffmpeg.on("progress", ({ time }) => {
+      progress.value = time / 1000000
+    })
+
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
@@ -42,7 +48,7 @@ export const useFFMpeg = (options: FFMPegOptions) => {
     const command = ["-i", "input.avi", ...options.convertOptions!, ...convertOptions, "-c", "copy", "output.mp4"]
 
     try {
-      originalFile.value = await fetchFile(options.inputUrl)
+      originalFile.value = await _fetchFile(options.inputUrl)
       await ffmpeg.writeFile("input.avi", originalFile.value)
 
       await ffmpeg.exec(command)
