@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.1.27](https://github.com/genu/nuxt-upload-kit/compare/v0.1.26...v0.1.27) (2026-02-23)
+
+
+### Bug Fixes
+
+* use dynamic imports for optional ffmpeg dependencies ([#62](https://github.com/genu/nuxt-upload-kit/issues/62)) ([a1a0eea](https://github.com/genu/nuxt-upload-kit/commit/a1a0eea3c924d4f0b9373ed3e9fb1b5bf3ff3041))
+
 ## [0.1.26](https://github.com/genu/nuxt-upload-kit/compare/v0.1.25...v0.1.26) (2026-02-13)
 
 
