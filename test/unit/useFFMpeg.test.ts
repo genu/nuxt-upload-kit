@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { useFFMpeg } from "../../src/runtime/composables/useFFMpeg"
 
 const mockFFmpegInstance = {
   on: vi.fn(),
@@ -27,8 +28,6 @@ vi.mock("@ffmpeg/util", () => ({
   fetchFile: (...args: unknown[]) => mockFetchFile(...args),
   toBlobURL: (...args: unknown[]) => mockToBlobURL(...args),
 }))
-
-import { useFFMpeg } from "../../src/runtime/composables/useFFMpeg"
 
 describe("useFFMpeg", () => {
   beforeEach(() => {
@@ -75,14 +74,8 @@ describe("useFFMpeg", () => {
 
       await load()
 
-      expect(mockToBlobURL).toHaveBeenCalledWith(
-        expect.stringContaining("ffmpeg-core.js"),
-        "text/javascript",
-      )
-      expect(mockToBlobURL).toHaveBeenCalledWith(
-        expect.stringContaining("ffmpeg-core.wasm"),
-        "application/wasm",
-      )
+      expect(mockToBlobURL).toHaveBeenCalledWith(expect.stringContaining("ffmpeg-core.js"), "text/javascript")
+      expect(mockToBlobURL).toHaveBeenCalledWith(expect.stringContaining("ffmpeg-core.wasm"), "application/wasm")
     })
   })
 
@@ -185,10 +178,14 @@ describe("useFFMpeg", () => {
       await convert(["-crf", "28"])
 
       expect(mockFFmpegInstance.exec).toHaveBeenCalledWith([
-        "-i", "input.avi",
-        "-preset", "fast",
-        "-crf", "28",
-        "-c", "copy",
+        "-i",
+        "input.avi",
+        "-preset",
+        "fast",
+        "-crf",
+        "28",
+        "-c",
+        "copy",
         "output.mp4",
       ])
     })

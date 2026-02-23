@@ -15,7 +15,7 @@ const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
 export const useFFMpeg = (options: FFMPegOptions) => {
   options = { ...defaultOptions, ...options }
   let ffmpeg: FFmpeg
-  let _fetchFile: typeof import("@ffmpeg/util")["fetchFile"]
+  let _fetchFile: (typeof import("@ffmpeg/util"))["fetchFile"]
   const status = ref<"paused" | "converting" | "success" | "error">("paused")
   const progress = ref(0)
   const originalFile = ref<Uint8Array>()
