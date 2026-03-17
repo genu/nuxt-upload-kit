@@ -58,7 +58,7 @@
     "@azure/storage-file-datalake": "12.29.0",
     "@ffmpeg/ffmpeg": "0.12.15",
     "@ffmpeg/util": "0.12.2",
-    "@nuxt/devtools": "3.2.3",
+    "@nuxt/devtools": "3.2.4",
     "@nuxt/eslint-config": "1.15.2",
     "@nuxt/kit": "4.4.2",
     "@nuxt/module-builder": "1.0.2",
