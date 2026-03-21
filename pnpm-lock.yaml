@@ -104,8 +104,8 @@ importers:
         version: 4.4.2(@azure/storage-blob@12.30.0)(@babel/core@7.29.0)(@babel/plugin-syntax-jsx@7.28.6(@babel/core@7.29.0))(@parcel/watcher@2.5.6)(@types/node@25.5.0)(@vue/compiler-sfc@3.5.29)(better-sqlite3@12.8.0)(cac@6.7.14)(db0@0.3.4(better-sqlite3@12.8.0))(eslint@10.1.0(jiti@2.6.1))(ioredis@5.10.0)(lightningcss@1.31.1)(magicast@0.5.2)(optionator@0.9.4)(rollup-plugin-visualizer@6.0.11(rollup@4.59.0))(rollup@4.59.0)(terser@5.46.0)(typescript@5.9.3)(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.0)(yaml@2.8.2))(vue-tsc@3.2.6(typescript@5.9.3))(yaml@2.8.2)
     devDependencies:
       '@vercel/config':
-        specifier: ^0.0.40
-        version: 0.0.40
+        specifier: ^0.0.41
+        version: 0.0.41
 
 packages:
 
@@ -4099,8 +4099,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@vercel/config@0.0.40':
-    resolution: {integrity: sha512-5wMbMuSDNpwoNQiPeaBwBzagIoiuBT6NfO2pxdjTEeVi7IRHDoSPRmSiDVc4fvO0SOkHbMuDXR8+XtgL+NoUcg==}
+  '@vercel/config@0.0.41':
+    resolution: {integrity: sha512-HBtFKzNAuR/3hxnlgOLtiqOjJ71c6eye9jz4NzYqUCtdN5xRsX+PiScn5gEwLvd5TnzaKDvAwcmOWGmjnW1uFQ==}
     hasBin: true
 
   '@vercel/nft@1.3.2':
@@ -4112,8 +4112,8 @@ packages:
     resolution: {integrity: sha512-Fw28YZpRnA3cAHHDlkt7xQHiJ0fcL+NRcIqsocZQUSmbzeIKRpwttJjik5ZGanXP+vlA4SbTg+AbA3bP363l+w==}
     engines: {node: '>= 20'}
 
-  '@vercel/routing-utils@6.0.2':
-    resolution: {integrity: sha512-XFsvKoRhwwxKC8jnnefhjYG02g5qpHc2PCxd2EKEVLiHQLF9un8HEA6+R0OfazN0daVj3SxjTDVnFClVREjg1Q==}
+  '@vercel/routing-utils@6.1.0':
+    resolution: {integrity: sha512-dEw7WSVocg92Gtac6ZtJKkEU/v4+3kPu6t50x/aqYj8Sh6yI1wZBmx1KfSYK7LASOWyO294Ckkie07e++pCjTQ==}
 
   '@vitejs/plugin-vue-jsx@5.1.5':
     resolution: {integrity: sha512-jIAsvHOEtWpslLOI2MeElGFxH7M8pM83BU/Tor4RLyiwH0FM4nUW3xdvbw20EeU9wc5IspQwMq225K3CMnJEpA==}
@@ -13537,9 +13537,9 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@vercel/config@0.0.40':
+  '@vercel/config@0.0.41':
     dependencies:
-      '@vercel/routing-utils': 6.0.2
+      '@vercel/routing-utils': 6.1.0
       pretty-cache-header: 1.0.0
       zod: 3.25.76
 
@@ -13564,7 +13564,7 @@ snapshots:
 
   '@vercel/oidc@3.1.0': {}
 
-  '@vercel/routing-utils@6.0.2':
+  '@vercel/routing-utils@6.1.0':
     dependencies:
       path-to-regexp: 6.1.0
       path-to-regexp-updated: path-to-regexp@6.3.0
