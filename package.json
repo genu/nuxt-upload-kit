@@ -77,7 +77,7 @@
     "typescript": "5.9.3",
     "unbuild": "3.6.1",
     "vitest": "4.1.2",
-    "vue": "3.5.31",
+    "vue": "3.5.32",
     "vue-tsc": "3.2.6"
   },
   "peerDependencies": {
