@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 import { createMockPluginContext, createMockRemoteUploadFile } from "../../helpers"
-import { PluginFirebaseStorage } from "../../../src/runtime/composables/useUploadKit/plugins/storage/firebase-storage"
+import {
+  PluginFirebaseStorage,
+  type FirebaseStorageUploadResult,
+} from "../../../src/runtime/composables/useUploadKit/plugins/storage/firebase-storage"
 
 // Mock Firebase Storage SDK - vi.mock is hoisted so we define everything inline
 vi.mock("firebase/storage", () => ({
@@ -120,7 +123,7 @@ describe("providers", () => {
           storage: mockStorage,
         })
 
-        const remoteFile = createMockRemoteUploadFile()
+        const remoteFile = createMockRemoteUploadFile<FirebaseStorageUploadResult>()
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),

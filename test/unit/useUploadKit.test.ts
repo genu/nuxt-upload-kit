@@ -1209,8 +1209,8 @@ describe("useUploadKit", () => {
     /**
      * Helper to wait for initialFiles to load (event-based, more deterministic than wait())
      */
-    const waitForInitialFiles = (
-      uploader: ReturnType<typeof useUploadKit>,
+    const waitForInitialFiles = <T>(
+      uploader: ReturnType<typeof useUploadKit<T>>,
       options: { expectError?: boolean; timeout?: number } = {},
     ) => {
       const { expectError = false, timeout = 1000 } = options

@@ -14,7 +14,7 @@ import type {
 
 type EmitFn = <K extends string | number | symbol>(event: K, payload: any) => void
 
-export interface PluginRunnerDeps<TUploadResult = any> {
+export interface PluginRunnerDeps<TUploadResult = unknown> {
   options: UploadOptions
   files: Ref<UploadFile<TUploadResult>[]>
   emitter: Emitter<any>
@@ -28,7 +28,7 @@ export interface PluginRunnerDeps<TUploadResult = any> {
  * - For 100 files × 5 plugins = 500+ function allocations without caching
  * - With caching: Only 5 function allocations total
  */
-export function createPluginRunner<TUploadResult = any>(deps: PluginRunnerDeps<TUploadResult>) {
+export function createPluginRunner<TUploadResult = unknown>(deps: PluginRunnerDeps<TUploadResult>) {
   const { options, files, emitter, getStoragePlugin } = deps
 
   // Cache for plugin emit functions

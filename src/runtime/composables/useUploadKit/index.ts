@@ -1,5 +1,6 @@
 import mitt from "mitt"
 import { computed, onBeforeUnmount, readonly, ref } from "vue"
+import type { Ref } from "vue"
 import type {
   UploaderEvents,
   UploadFile,
@@ -30,9 +31,11 @@ const defaultOptions: UploadOptions = {
   autoUpload: false,
 }
 
-export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) => {
+export const useUploadKit = <TUploadResult = unknown>(
+  _options: Omit<UploadOptions, "storage"> & { storage?: StoragePlugin<TUploadResult, any> } = {},
+) => {
   const options = { ...defaultOptions, ..._options } as UploadOptions
-  const files = ref<UploadFile<TUploadResult>[]>([])
+  const files = ref<UploadFile<TUploadResult>[]>([]) as Ref<UploadFile<TUploadResult>[]>
   const emitter = mitt<any>()
   const status = ref<UploadStatus>("waiting")
   const isReady = ref(options.initialFiles === undefined)
@@ -46,8 +49,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
   /**
    * Get the active storage plugin
    */
-  const getStoragePlugin = (): StoragePlugin<any, any> | null => {
-    return options.storage || null
+  const getStoragePlugin = (): StoragePlugin<TUploadResult, any> | null => {
+    return (options.storage as StoragePlugin<TUploadResult, any> | undefined) || null
   }
 
   const addPlugin = (plugin: UploaderPlugin<any, any>) => {
@@ -129,7 +132,9 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
   })
 
   const updateFile = (fileId: string, updatedFile: Partial<UploadFile<TUploadResult>>) => {
-    files.value = files.value.map((file) => (file.id === fileId ? ({ ...file, ...updatedFile } as UploadFile) : file))
+    files.value = files.value.map((file) =>
+      file.id === fileId ? ({ ...file, ...updatedFile } as UploadFile<TUploadResult>) : file,
+    )
   }
 
   /**
@@ -137,7 +142,8 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
    */
   const resolveRemoteFiles = async (initialFiles: InitialFileInput[]): Promise<UploadFile<TUploadResult>[]> => {
     const storagePlugin = getStoragePlugin()
-    if (!storagePlugin?.hooks.getRemoteFile) {
+    const getRemoteFile = storagePlugin?.hooks.getRemoteFile
+    if (!storagePlugin || !getRemoteFile) {
       throw new Error("Storage plugin with getRemoteFile hook is required to resolve remote files")
     }
 
@@ -147,7 +153,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
         if (!storageKey) return null
 
         const context = createPluginContext(storagePlugin.id, files.value, options, emitter, storagePlugin)
-        const remoteFileData = await storagePlugin.hooks.getRemoteFile(storageKey, context)
+        const remoteFileData = await getRemoteFile(storageKey, context)
 
         const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
         const name = storageKey.split("/").pop() || storageKey
@@ -233,7 +239,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
       }
 
       const preprocessedFile = await runPluginStage("preprocess", validatedFile)
-      const fileToAdd = preprocessedFile || validatedFile
+      const fileToAdd = (preprocessedFile || validatedFile) as UploadFile<TUploadResult>
 
       files.value.push(fileToAdd)
       emitter.emit("file:added", fileToAdd)
@@ -247,7 +253,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
       return validatedFile
     } catch (err) {
       const error = createFileError(uploadFile, err)
-      const fileWithError = { ...uploadFile, status: "error" as const, error }
+      const fileWithError = { ...uploadFile, status: "error" as const, error } as UploadFile<TUploadResult>
       files.value.push(fileWithError)
       emitter.emit("file:error", { file: fileWithError, error })
       throw err
@@ -286,7 +292,7 @@ export const useUploadKit = <TUploadResult = any>(_options: UploadOptions = {}) 
     }
 
     if (processedFile.id !== file.id) {
-      files.value = files.value.map((f) => (f.id === file.id ? processedFile : f))
+      files.value = files.value.map((f) => (f.id === file.id ? (processedFile as UploadFile<TUploadResult>) : f))
     }
 
     updateFile(processedFile.id, { status: "uploading" })

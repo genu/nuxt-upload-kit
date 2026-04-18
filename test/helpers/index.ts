@@ -33,7 +33,9 @@ export function createMockBlob(size: number = 1024, type: string = "image/jpeg")
 /**
  * Create a mock LocalUploadFile for testing
  */
-export function createMockLocalUploadFile(overrides: Partial<LocalUploadFile> & { storageKey?: string } = {}): LocalUploadFile {
+export function createMockLocalUploadFile<TUploadResult = unknown>(
+  overrides: Partial<LocalUploadFile<TUploadResult>> & { storageKey?: string } = {},
+): LocalUploadFile<TUploadResult> {
   const file = createMockFile(overrides.name || "test-file.jpg", overrides.size || 1024, overrides.mimeType || "image/jpeg")
 
   const { storageKey, ...rest } = overrides
@@ -56,7 +58,9 @@ export function createMockLocalUploadFile(overrides: Partial<LocalUploadFile> & 
 /**
  * Create a mock RemoteUploadFile for testing
  */
-export function createMockRemoteUploadFile(overrides: Partial<RemoteUploadFile> = {}): RemoteUploadFile {
+export function createMockRemoteUploadFile<TUploadResult = unknown>(
+  overrides: Partial<RemoteUploadFile<TUploadResult>> = {},
+): RemoteUploadFile<TUploadResult> {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`,
     name: "remote-file.jpg",
@@ -216,7 +220,7 @@ export function createMockStoragePlugin(options?: {
     hooks: {
       upload: vi.fn(async (file: UploadFile, context: { onProgress: (p: number) => void }) => {
         const result = await uploadFn(file, context.onProgress)
-        return result
+        return result as { url: string; storageKey: string }
       }),
       getRemoteFile: vi.fn(async (storageKey: string) => getRemoteFileFn(storageKey)),
       ...(removeFn ? { remove: vi.fn(async (file: UploadFile) => removeFn(file)) } : {}),

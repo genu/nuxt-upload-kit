@@ -3,7 +3,7 @@ import type { Emitter } from "mitt"
 import type { UploadFile, LocalUploadFile, UploadOptions, StoragePlugin, PluginLifecycleStage } from "./types"
 import { cleanupObjectURLs, createPluginContext } from "./utils"
 
-export interface FileOperationsDeps<TUploadResult = any> {
+export interface FileOperationsDeps<TUploadResult = unknown> {
   /** Reactive ref containing the files array */
   files: Ref<UploadFile<TUploadResult>[]>
   /** Event emitter for file events */
@@ -28,7 +28,7 @@ export interface FileOperationsDeps<TUploadResult = any> {
  * This factory function creates all file access and manipulation operations
  * with proper closure over the composable's internal state.
  */
-export function createFileOperations<TUploadResult = any>(deps: FileOperationsDeps<TUploadResult>) {
+export function createFileOperations<TUploadResult = unknown>(deps: FileOperationsDeps<TUploadResult>) {
   const { files, emitter, options, createdObjectURLs, getStoragePlugin, runPluginStage, upload, setHasEmittedFilesUploaded } =
     deps
 
@@ -156,7 +156,7 @@ export function createFileOperations<TUploadResult = any>(deps: FileOperationsDe
 
     // Re-run preprocess hooks to regenerate thumbnails/previews with new data
     const preprocessedFile = await runPluginStage("preprocess", updatedFile)
-    const finalFile = preprocessedFile || updatedFile
+    const finalFile = (preprocessedFile || updatedFile) as UploadFile<TUploadResult>
 
     // Update the file in the array
     const index = files.value.findIndex((f) => f.id === fileId)
