@@ -9,11 +9,8 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.0",
-    "docus": "latest",
-    "nuxt": "^4.2.2"
-  },
-  "devDependencies": {
-    "@vercel/config": "^0.2.0"
+    "better-sqlite3": "12.6.0",
+    "docus": "5.10.0",
+    "nuxt": "4.4.2"
   }
 }
