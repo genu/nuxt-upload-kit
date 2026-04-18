@@ -1,5 +1,4 @@
 import type { Ref } from "vue"
-import type { Emitter } from "mitt"
 import type {
   UploadFile,
   UploadOptions,
@@ -10,6 +9,7 @@ import type {
   SetupHook,
   PluginContext,
   StoragePlugin,
+  UploaderEmitter,
 } from "./types"
 
 type EmitFn = <K extends string | number | symbol>(event: K, payload: any) => void
@@ -17,7 +17,7 @@ type EmitFn = <K extends string | number | symbol>(event: K, payload: any) => vo
 export interface PluginRunnerDeps<TUploadResult = unknown> {
   options: UploadOptions
   files: Ref<UploadFile<TUploadResult>[]>
-  emitter: Emitter<any>
+  emitter: UploaderEmitter<TUploadResult>
   getStoragePlugin: () => StoragePlugin<any, any> | null
 }
 
@@ -80,8 +80,8 @@ export function createPluginRunner<TUploadResult = unknown>(deps: PluginRunnerDe
    */
   async function runPluginStage(
     stage: Exclude<PluginLifecycleStage, "upload">,
-    file?: UploadFile,
-  ): Promise<UploadFile | undefined | null> {
+    file?: UploadFile<TUploadResult>,
+  ): Promise<UploadFile<TUploadResult> | undefined | null> {
     if (!options.plugins) return file
 
     let currentFile = file
@@ -102,7 +102,7 @@ export function createPluginRunner<TUploadResult = unknown>(deps: PluginRunnerDe
         const result = await callPluginHook(hook, stage, currentFile, context)
 
         if (result && currentFile && "id" in result) {
-          currentFile = result
+          currentFile = result as UploadFile<TUploadResult>
         }
       } catch (error) {
         if (currentFile) {

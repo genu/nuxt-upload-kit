@@ -372,6 +372,13 @@ type CoreUploaderEvents<TUploadResult = unknown> = {
 export type UploaderEvents<TUploadResult = unknown> = CoreUploaderEvents<TUploadResult>
 
 /**
+ * mitt emitter type used internally. Intersects core events with a string-keyed
+ * catch-all so plugin-namespaced events (`${pluginId}:${event}`) typecheck as `unknown`
+ * without losing the precise payload typing on core events.
+ */
+export type UploaderEmitter<TUploadResult = unknown> = Emitter<UploaderEvents<TUploadResult> & Record<string, unknown>>
+
+/**
  * PLUGIN API - Types for building custom plugins
  * Only needed if users want to create custom validators/processors
  */

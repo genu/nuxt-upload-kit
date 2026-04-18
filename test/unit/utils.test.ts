@@ -9,11 +9,12 @@ import {
 } from "../../src/runtime/composables/useUploadKit/utils"
 import { createMockLocalUploadFile } from "../helpers"
 import mitt from "mitt"
+import type { UploaderEvents } from "../../src/runtime/composables/useUploadKit/types"
 
 describe("utils", () => {
   describe("createPluginContext", () => {
     it("should create a plugin context with all properties", () => {
-      const emitter = mitt()
+      const emitter = mitt<UploaderEvents & Record<string, unknown>>()
       const files = [createMockLocalUploadFile()]
       const options = { maxFiles: 10 }
 
@@ -25,7 +26,7 @@ describe("utils", () => {
     })
 
     it("should prefix emitted events with plugin ID", () => {
-      const emitter = mitt()
+      const emitter = mitt<UploaderEvents & Record<string, unknown>>()
       const handler = vi.fn()
       emitter.on("test-plugin:custom-event", handler)
 
@@ -36,7 +37,7 @@ describe("utils", () => {
     })
 
     it("should handle different plugin IDs", () => {
-      const emitter = mitt()
+      const emitter = mitt<UploaderEvents & Record<string, unknown>>()
       const handler1 = vi.fn()
       const handler2 = vi.fn()
 
@@ -54,14 +55,14 @@ describe("utils", () => {
     })
 
     it("should work with empty files array", () => {
-      const emitter = mitt()
+      const emitter = mitt<UploaderEvents & Record<string, unknown>>()
       const context = createPluginContext("test", [], {}, emitter)
 
       expect(context.files).toHaveLength(0)
     })
 
     it("should work with empty options", () => {
-      const emitter = mitt()
+      const emitter = mitt<UploaderEvents & Record<string, unknown>>()
       const context = createPluginContext("test", [], {}, emitter)
 
       expect(context.options).toEqual({})

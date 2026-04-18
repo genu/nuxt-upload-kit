@@ -1,13 +1,12 @@
 import type { Ref } from "vue"
-import type { Emitter } from "mitt"
-import type { UploadFile, LocalUploadFile, UploadOptions, StoragePlugin, PluginLifecycleStage } from "./types"
+import type { UploadFile, LocalUploadFile, UploadOptions, StoragePlugin, PluginLifecycleStage, UploaderEmitter } from "./types"
 import { cleanupObjectURLs, createPluginContext } from "./utils"
 
 export interface FileOperationsDeps<TUploadResult = unknown> {
   /** Reactive ref containing the files array */
   files: Ref<UploadFile<TUploadResult>[]>
   /** Event emitter for file events */
-  emitter: Emitter<any>
+  emitter: UploaderEmitter<TUploadResult>
   /** Upload options configuration */
   options: UploadOptions
   /** Map tracking created object URLs for cleanup */
@@ -15,7 +14,10 @@ export interface FileOperationsDeps<TUploadResult = unknown> {
   /** Function to get the active storage plugin */
   getStoragePlugin: () => StoragePlugin<any, any> | null
   /** Function to run plugin lifecycle stages */
-  runPluginStage: (stage: Exclude<PluginLifecycleStage, "upload">, file?: UploadFile) => Promise<UploadFile | undefined | null>
+  runPluginStage: (
+    stage: Exclude<PluginLifecycleStage, "upload">,
+    file?: UploadFile<TUploadResult>,
+  ) => Promise<UploadFile<TUploadResult> | undefined | null>
   /** Function to trigger upload */
   upload: () => Promise<void>
   /** Function to update the hasEmittedFilesUploaded flag */
@@ -142,7 +144,7 @@ export function createFileOperations<TUploadResult = unknown>(deps: FileOperatio
     cleanupObjectURLs(createdObjectURLs, fileId)
 
     // Convert to LocalUploadFile since we now have local data
-    const updatedFile: LocalUploadFile = {
+    const updatedFile: LocalUploadFile<TUploadResult> = {
       ...file,
       source: "local",
       data: newData,
@@ -155,8 +157,7 @@ export function createFileOperations<TUploadResult = unknown>(deps: FileOperatio
     }
 
     // Re-run preprocess hooks to regenerate thumbnails/previews with new data
-    const preprocessedFile = await runPluginStage("preprocess", updatedFile)
-    const finalFile = (preprocessedFile || updatedFile) as UploadFile<TUploadResult>
+    const finalFile = (await runPluginStage("preprocess", updatedFile)) || updatedFile
 
     // Update the file in the array
     const index = files.value.findIndex((f) => f.id === fileId)

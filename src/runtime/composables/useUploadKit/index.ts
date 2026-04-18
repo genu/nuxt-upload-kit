@@ -2,13 +2,12 @@ import mitt from "mitt"
 import { computed, onBeforeUnmount, readonly, ref } from "vue"
 import type { Ref } from "vue"
 import type {
-  UploaderEvents,
+  UploaderEmitter,
   UploadFile,
   LocalUploadFile,
   RemoteUploadFile,
   UploadOptions,
   UploadStatus,
-  FileError,
   Plugin as UploaderPlugin,
   ProcessingPlugin,
   StoragePlugin,
@@ -36,7 +35,7 @@ export const useUploadKit = <TUploadResult = unknown>(
 ) => {
   const options = { ...defaultOptions, ..._options } as UploadOptions
   const files = ref<UploadFile<TUploadResult>[]>([]) as Ref<UploadFile<TUploadResult>[]>
-  const emitter = mitt<any>()
+  const emitter: UploaderEmitter<TUploadResult> = mitt()
   const status = ref<UploadStatus>("waiting")
   const isReady = ref(options.initialFiles === undefined)
 
@@ -220,7 +219,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const extension = getExtension(file.name)
 
-    const uploadFile: LocalUploadFile = {
+    const uploadFile: LocalUploadFile<TUploadResult> = {
       id: `${id}.${extension}`,
       progress: { percentage: 0 },
       name: file.name,
@@ -238,8 +237,7 @@ export const useUploadKit = <TUploadResult = unknown>(
         throw new Error(`File validation failed for ${file.name}`)
       }
 
-      const preprocessedFile = await runPluginStage("preprocess", validatedFile)
-      const fileToAdd = (preprocessedFile || validatedFile) as UploadFile<TUploadResult>
+      const fileToAdd = (await runPluginStage("preprocess", validatedFile)) || validatedFile
 
       files.value.push(fileToAdd)
       emitter.emit("file:added", fileToAdd)
@@ -253,7 +251,7 @@ export const useUploadKit = <TUploadResult = unknown>(
       return validatedFile
     } catch (err) {
       const error = createFileError(uploadFile, err)
-      const fileWithError = { ...uploadFile, status: "error" as const, error } as UploadFile<TUploadResult>
+      const fileWithError: UploadFile<TUploadResult> = { ...uploadFile, status: "error", error }
       files.value.push(fileWithError)
       emitter.emit("file:error", { file: fileWithError, error })
       throw err
@@ -263,7 +261,7 @@ export const useUploadKit = <TUploadResult = unknown>(
   const addFiles = async (newFiles: File[]) => {
     const results = await Promise.allSettled(newFiles.map((file) => addFile(file)))
     const addedFiles = results
-      .filter((r): r is PromiseFulfilledResult<UploadFile> => r.status === "fulfilled")
+      .filter((r): r is PromiseFulfilledResult<UploadFile<TUploadResult>> => r.status === "fulfilled")
       .map((r) => r.value)
     return addedFiles
   }
@@ -287,7 +285,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     if (!processedFile) {
       const error = createFileError(file, new Error("File processing failed"))
       updateFile(file.id, { status: "error", error })
-      emitter.emit("file:error", { file, error } as { file: Readonly<UploadFile<TUploadResult>>; error: FileError })
+      emitter.emit("file:error", { file, error })
       return
     }
 
@@ -299,10 +297,7 @@ export const useUploadKit = <TUploadResult = unknown>(
 
     const onProgress = (progress: number) => {
       updateFile(processedFile.id, { progress: { percentage: progress } })
-      emitter.emit("upload:progress", { file: processedFile, progress } as {
-        file: Readonly<UploadFile<TUploadResult>>
-        progress: number
-      })
+      emitter.emit("upload:progress", { file: processedFile, progress })
     }
 
     const storagePlugin = getStoragePlugin()
@@ -334,25 +329,25 @@ export const useUploadKit = <TUploadResult = unknown>(
   const upload = async () => {
     const filesToUpload = files.value.filter((f) => f.status === "waiting")
 
-    emitter.emit("upload:start", filesToUpload as Array<Readonly<UploadFile<TUploadResult>>>)
+    emitter.emit("upload:start", filesToUpload)
 
     for (const file of filesToUpload) {
       try {
-        await uploadSingleFile(file as UploadFile<TUploadResult>)
+        await uploadSingleFile(file)
       } catch (err) {
-        const error = createFileError(file as UploadFile<TUploadResult>, err)
+        const error = createFileError(file, err)
         updateFile(file.id, { status: "error", error })
-        emitter.emit("file:error", { file, error } as { file: Readonly<UploadFile<TUploadResult>>; error: FileError })
+        emitter.emit("file:error", { file, error })
       }
     }
 
-    const completed = files.value.filter((f) => f.status === "complete")
-    emitter.emit("upload:complete", completed as Array<Required<Readonly<UploadFile<TUploadResult>>>>)
+    const completed = files.value.filter((f) => f.status === "complete") as Array<Required<UploadFile<TUploadResult>>>
+    emitter.emit("upload:complete", completed)
 
     const allComplete = files.value.length > 0 && files.value.every((f) => f.status === "complete")
     if (allComplete && !hasEmittedFilesUploaded) {
       hasEmittedFilesUploaded = true
-      emitter.emit("files:uploaded", files.value as Array<Readonly<UploadFile<TUploadResult>>>)
+      emitter.emit("files:uploaded", files.value)
     }
   }
 
@@ -407,9 +402,6 @@ export const useUploadKit = <TUploadResult = unknown>(
     addPlugin,
 
     // Events
-    on: emitter.on as {
-      <K extends keyof UploaderEvents<TUploadResult>>(type: K, handler: (event: UploaderEvents<TUploadResult>[K]) => void): void
-      (type: string, handler: (event: any) => void): void
-    },
+    on: emitter.on,
   }
 }
