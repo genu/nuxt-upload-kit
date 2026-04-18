@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createMockPluginContext, createMockLocalUploadFile, createMockRemoteUploadFile } from "../../helpers"
-import { PluginS3 } from "../../../src/runtime/composables/useUploadKit/plugins/storage/s3"
+import { PluginS3, type S3UploadResult } from "../../../src/runtime/composables/useUploadKit/plugins/storage/s3"
 
 // Factory to create mock XHR instances
 function createMockXHR() {
@@ -116,7 +116,7 @@ describe("providers", () => {
           getPresignedUploadUrl: vi.fn(),
         })
 
-        const remoteFile = createMockRemoteUploadFile()
+        const remoteFile = createMockRemoteUploadFile<S3UploadResult>()
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),
@@ -135,7 +135,7 @@ describe("providers", () => {
 
         const plugin = PluginS3({ getPresignedUploadUrl })
 
-        const file = createMockLocalUploadFile({
+        const file = createMockLocalUploadFile<S3UploadResult>({
           id: "test-file-id",
           name: "test.jpg",
           size: 1024,
@@ -163,7 +163,7 @@ describe("providers", () => {
 
         const plugin = PluginS3({ getPresignedUploadUrl })
 
-        const file = createMockLocalUploadFile({ id: "my-file-id" })
+        const file = createMockLocalUploadFile<S3UploadResult>({ id: "my-file-id" })
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),
@@ -188,7 +188,7 @@ describe("providers", () => {
           path: "uploads/images",
         })
 
-        const file = createMockLocalUploadFile({ id: "my-file-id.jpg" })
+        const file = createMockLocalUploadFile<S3UploadResult>({ id: "my-file-id.jpg" })
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),
@@ -487,7 +487,7 @@ describe("providers", () => {
         })
 
         const plugin = PluginS3({ getPresignedUploadUrl })
-        const file = createMockLocalUploadFile()
+        const file = createMockLocalUploadFile<S3UploadResult>()
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),
@@ -505,7 +505,7 @@ describe("providers", () => {
         })
 
         const plugin = PluginS3({ getPresignedUploadUrl })
-        const file = createMockLocalUploadFile({ mimeType: "image/png" })
+        const file = createMockLocalUploadFile<S3UploadResult>({ mimeType: "image/png" })
         const context = {
           ...createMockPluginContext(),
           onProgress: vi.fn(),

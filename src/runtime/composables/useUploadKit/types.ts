@@ -36,7 +36,7 @@ export type FileSource = "local" | "storage" | "instagram" | "dropbox" | "google
 /**
  * Base properties shared by both local and remote upload files
  */
-export interface BaseUploadFile<TUploadResult = any> {
+export interface BaseUploadFile<TUploadResult = unknown> {
   /** Unique identifier for the file (stable, never changes after creation) */
   id: string
 
@@ -130,7 +130,7 @@ export interface BaseUploadFile<TUploadResult = any> {
  * }
  * ```
  */
-export interface LocalUploadFile<TUploadResult = any> extends BaseUploadFile<TUploadResult> {
+export interface LocalUploadFile<TUploadResult = unknown> extends BaseUploadFile<TUploadResult> {
   /** Always 'local' for files selected from user's device */
   source: "local"
 
@@ -168,7 +168,7 @@ export interface LocalUploadFile<TUploadResult = any> extends BaseUploadFile<TUp
  * }
  * ```
  */
-export interface RemoteUploadFile<TUploadResult = any> extends BaseUploadFile<TUploadResult> {
+export interface RemoteUploadFile<TUploadResult = unknown> extends BaseUploadFile<TUploadResult> {
   /**
    * Source of the remote file
    * - 'storage': File from your storage (previously uploaded)
@@ -204,7 +204,7 @@ export interface RemoteUploadFile<TUploadResult = any> extends BaseUploadFile<TU
  * }
  * ```
  */
-export type UploadFile<TUploadResult = any> = LocalUploadFile<TUploadResult> | RemoteUploadFile<TUploadResult>
+export type UploadFile<TUploadResult = unknown> = LocalUploadFile<TUploadResult> | RemoteUploadFile<TUploadResult>
 
 // Configuration
 export interface UploadOptions {
@@ -349,7 +349,7 @@ export interface ImageCompressionOptions {
 }
 
 // Core events (always available)
-type CoreUploaderEvents<TUploadResult = any> = {
+type CoreUploaderEvents<TUploadResult = unknown> = {
   "file:added": Readonly<UploadFile<TUploadResult>>
   "file:removed": Readonly<UploadFile<TUploadResult>>
   "file:replaced": Readonly<UploadFile<TUploadResult>>
@@ -369,7 +369,7 @@ type CoreUploaderEvents<TUploadResult = any> = {
 }
 
 // Events for listening - only core events are typed, plugins can emit arbitrary events
-export type UploaderEvents<TUploadResult = any> = CoreUploaderEvents<TUploadResult>
+export type UploaderEvents<TUploadResult = unknown> = CoreUploaderEvents<TUploadResult>
 
 /**
  * PLUGIN API - Types for building custom plugins
@@ -421,7 +421,7 @@ export type SetupHook<TPluginEvents extends Record<string, any> = Record<string,
  * }
  * ```
  */
-export type UploadHook<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> = (
+export type UploadHook<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> = (
   file: UploadFile<TUploadResult>,
   context: PluginContext<TPluginEvents> & { onProgress: (progress: number) => void },
 ) => Promise<
@@ -433,10 +433,10 @@ export type UploadHook<TUploadResult = any, TPluginEvents extends Record<string,
   }
 >
 
-export type GetRemoteFileHook<TPluginEvents extends Record<string, any> = Record<string, never>> = (
+export type GetRemoteFileHook<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> = (
   fileId: string,
   context: PluginContext<TPluginEvents>,
-) => Promise<MinimumRemoteFileAttributes>
+) => Promise<MinimumRemoteFileAttributes<TUploadResult>>
 
 export type RemoveHook<TPluginEvents extends Record<string, any> = Record<string, never>> = (
   file: UploadFile,
@@ -458,21 +458,21 @@ export type ProcessingPluginHooks<TPluginEvents extends Record<string, any> = Re
 /**
  * Storage plugin hooks (upload, download, delete from remote storage)
  */
-export type StoragePluginHooks<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> = {
+export type StoragePluginHooks<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> = {
   upload: UploadHook<TUploadResult, TPluginEvents>
-  getRemoteFile?: GetRemoteFileHook<TPluginEvents>
+  getRemoteFile?: GetRemoteFileHook<TUploadResult, TPluginEvents>
   remove?: RemoveHook<TPluginEvents>
 }
 
 /**
  * All possible plugin hooks (for internal use)
  */
-export type PluginHooks<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> = {
+export type PluginHooks<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> = {
   validate?: ValidationHook<TPluginEvents>
   preprocess?: ProcessingHook<TPluginEvents>
   process?: ProcessingHook<TPluginEvents>
   upload?: UploadHook<TUploadResult, TPluginEvents>
-  getRemoteFile?: GetRemoteFileHook<TPluginEvents>
+  getRemoteFile?: GetRemoteFileHook<TUploadResult, TPluginEvents>
   remove?: RemoveHook<TPluginEvents>
   complete?: ProcessingHook<TPluginEvents>
 }
@@ -482,7 +482,7 @@ export type PluginHooks<TUploadResult = any, TPluginEvents extends Record<string
  *
  * These plugins transform or validate files without handling storage.
  */
-export interface ProcessingPlugin<_TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> {
+export interface ProcessingPlugin<_TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> {
   id: string
   hooks: ProcessingPluginHooks<TPluginEvents>
   options?: UploadOptions
@@ -495,7 +495,7 @@ export interface ProcessingPlugin<_TUploadResult = any, TPluginEvents extends Re
  * Storage plugins handle uploading, downloading, and deleting files from remote storage.
  * Only one storage plugin can be active at a time.
  */
-export interface StoragePlugin<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> {
+export interface StoragePlugin<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> {
   id: string
   hooks: StoragePluginHooks<TUploadResult, TPluginEvents>
   options?: UploadOptions
@@ -540,7 +540,7 @@ export interface StoragePlugin<TUploadResult = any, TPluginEvents extends Record
 /**
  * Base plugin interface (for internal use - supports both types)
  */
-export interface Plugin<TUploadResult = any, TPluginEvents extends Record<string, any> = Record<string, never>> {
+export interface Plugin<TUploadResult = unknown, TPluginEvents extends Record<string, any> = Record<string, never>> {
   id: string
   hooks: PluginHooks<TUploadResult, TPluginEvents>
   options?: UploadOptions
@@ -601,7 +601,7 @@ export function defineProcessingPlugin<
  */
 export function defineStorageAdapter<
   TPluginOptions = unknown,
-  TUploadResult = any,
+  TUploadResult = unknown,
   TPluginEvents extends Record<string, any> = Record<string, never>,
 >(
   factory: (options: TPluginOptions) => StoragePlugin<TUploadResult, TPluginEvents>,
@@ -689,7 +689,7 @@ export interface UploadBlob {
   blobPath: string
 }
 
-export type MinimumRemoteFileAttributes<TUploadResult = any> = {
+export type MinimumRemoteFileAttributes<TUploadResult = unknown> = {
   size: number
   mimeType: string
   remoteUrl: string
