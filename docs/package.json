@@ -9,7 +9,7 @@
     "preview": "nuxt preview"
   },
   "dependencies": {
-    "better-sqlite3": "12.6.0",
+    "better-sqlite3": "12.9.0",
     "docus": "5.10.0",
     "nuxt": "4.4.2"
   }
