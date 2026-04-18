@@ -7,6 +7,7 @@ node_modules
 # Nuxt dev/build outputs
 .nuxt
 .output
+.vercel
 dist
 .data
 .nitro
