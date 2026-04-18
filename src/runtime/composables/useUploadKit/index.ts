@@ -102,8 +102,95 @@ export const useUploadKit = <TUploadResult = unknown>(
   // Create plugin runner
   const { getPluginEmitFn, runPluginStage } = createPluginRunner({ options, files, emitter, getStoragePlugin })
 
-  // Upload function holder - assigned after upload() is defined below
-  const uploadHolder: { fn: () => Promise<void> } = { fn: async () => {} }
+  const updateFile = (fileId: string, updatedFile: Partial<UploadFile<TUploadResult>>) => {
+    files.value = files.value.map((file) =>
+      file.id === fileId ? ({ ...file, ...updatedFile } as UploadFile<TUploadResult>) : file,
+    )
+  }
+
+  /**
+   * Extract storageKey from upload result if available
+   */
+  const extractStorageKey = (uploadResult: TUploadResult): string | undefined => {
+    if (uploadResult && typeof uploadResult === "object" && "storageKey" in uploadResult) {
+      return (uploadResult as { storageKey: string }).storageKey
+    }
+    return undefined
+  }
+
+  /**
+   * Upload a single file and update its state
+   */
+  const uploadSingleFile = async (file: UploadFile<TUploadResult>): Promise<void> => {
+    const processedFile = await runPluginStage("process", file)
+
+    if (!processedFile) {
+      const error = createFileError(file, new Error("File processing failed"))
+      updateFile(file.id, { status: "error", error })
+      emitter.emit("file:error", { file, error })
+      return
+    }
+
+    if (processedFile.id !== file.id) {
+      files.value = files.value.map((f) => (f.id === file.id ? (processedFile as UploadFile<TUploadResult>) : f))
+    }
+
+    updateFile(processedFile.id, { status: "uploading" })
+
+    const onProgress = (progress: number) => {
+      updateFile(processedFile.id, { progress: { percentage: progress } })
+      emitter.emit("upload:progress", { file: processedFile, progress })
+    }
+
+    const storagePlugin = getStoragePlugin()
+    if (!storagePlugin?.hooks.upload) {
+      throw new Error("Storage plugin with upload hook is required")
+    }
+
+    const context = {
+      files: files.value,
+      options,
+      onProgress,
+      emit: getPluginEmitFn(storagePlugin.id),
+    }
+    const result = await storagePlugin.hooks.upload(file, context)
+    const uploadResult = result as TUploadResult
+    const remoteUrl = result.url
+
+    const currentFile = files.value.find((f) => f.id === processedFile.id)
+    const preview = currentFile?.preview || remoteUrl
+    const storageKey = extractStorageKey(uploadResult)
+
+    // Get thumbnail from file if it was uploaded by the thumbnail plugin
+    const thumbnail = currentFile?.thumbnail
+
+    updateFile(processedFile.id, { status: "complete", uploadResult, remoteUrl, preview, storageKey, thumbnail })
+  }
+
+  const upload = async () => {
+    const filesToUpload = files.value.filter((f) => f.status === "waiting")
+
+    emitter.emit("upload:start", filesToUpload)
+
+    for (const file of filesToUpload) {
+      try {
+        await uploadSingleFile(file)
+      } catch (err) {
+        const error = createFileError(file, err)
+        updateFile(file.id, { status: "error", error })
+        emitter.emit("file:error", { file, error })
+      }
+    }
+
+    const completed = files.value.filter((f) => f.status === "complete") as Array<Required<UploadFile<TUploadResult>>>
+    emitter.emit("upload:complete", completed)
+
+    const allComplete = files.value.length > 0 && files.value.every((f) => f.status === "complete")
+    if (allComplete && !hasEmittedFilesUploaded) {
+      hasEmittedFilesUploaded = true
+      emitter.emit("files:uploaded", files.value)
+    }
+  }
 
   // Create file operations (cast files to avoid Vue's UnwrapRef type complexity)
   const fileOps = createFileOperations({
@@ -113,7 +200,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     createdObjectURLs,
     getStoragePlugin,
     runPluginStage,
-    upload: () => uploadHolder.fn(),
+    upload,
     setHasEmittedFilesUploaded: (value: boolean) => {
       hasEmittedFilesUploaded = value
     },
@@ -129,12 +216,6 @@ export const useUploadKit = <TUploadResult = unknown>(
   emitter.on("upload:progress", ({ file, progress }) => {
     updateFile(file.id, { progress: { percentage: progress } })
   })
-
-  const updateFile = (fileId: string, updatedFile: Partial<UploadFile<TUploadResult>>) => {
-    files.value = files.value.map((file) =>
-      file.id === fileId ? ({ ...file, ...updatedFile } as UploadFile<TUploadResult>) : file,
-    )
-  }
 
   /**
    * Resolve an array of InitialFileInput into RemoteUploadFile objects via the storage plugin.
@@ -245,7 +326,7 @@ export const useUploadKit = <TUploadResult = unknown>(
       hasEmittedFilesUploaded = false
 
       if (options.autoUpload) {
-        uploadHolder.fn()
+        upload()
       }
 
       return validatedFile
@@ -265,94 +346,6 @@ export const useUploadKit = <TUploadResult = unknown>(
       .map((r) => r.value)
     return addedFiles
   }
-
-  /**
-   * Extract storageKey from upload result if available
-   */
-  const extractStorageKey = (uploadResult: TUploadResult): string | undefined => {
-    if (uploadResult && typeof uploadResult === "object" && "storageKey" in uploadResult) {
-      return (uploadResult as { storageKey: string }).storageKey
-    }
-    return undefined
-  }
-
-  /**
-   * Upload a single file and update its state
-   */
-  const uploadSingleFile = async (file: UploadFile<TUploadResult>): Promise<void> => {
-    const processedFile = await runPluginStage("process", file)
-
-    if (!processedFile) {
-      const error = createFileError(file, new Error("File processing failed"))
-      updateFile(file.id, { status: "error", error })
-      emitter.emit("file:error", { file, error })
-      return
-    }
-
-    if (processedFile.id !== file.id) {
-      files.value = files.value.map((f) => (f.id === file.id ? (processedFile as UploadFile<TUploadResult>) : f))
-    }
-
-    updateFile(processedFile.id, { status: "uploading" })
-
-    const onProgress = (progress: number) => {
-      updateFile(processedFile.id, { progress: { percentage: progress } })
-      emitter.emit("upload:progress", { file: processedFile, progress })
-    }
-
-    const storagePlugin = getStoragePlugin()
-    if (!storagePlugin?.hooks.upload) {
-      throw new Error("Storage plugin with upload hook is required")
-    }
-
-    const context = {
-      files: files.value,
-      options,
-      onProgress,
-      emit: getPluginEmitFn(storagePlugin.id),
-    }
-    const result = await storagePlugin.hooks.upload(file, context)
-    const uploadResult = result as TUploadResult
-    const remoteUrl = result.url
-
-    const currentFile = files.value.find((f) => f.id === processedFile.id)
-    const preview = currentFile?.preview || remoteUrl
-    const storageKey = extractStorageKey(uploadResult)
-
-    // Get thumbnail from file if it was uploaded by the thumbnail plugin
-    const thumbnail = currentFile?.thumbnail
-
-    updateFile(processedFile.id, { status: "complete", uploadResult, remoteUrl, preview, storageKey, thumbnail })
-  }
-
-  // Define upload function
-  const upload = async () => {
-    const filesToUpload = files.value.filter((f) => f.status === "waiting")
-
-    emitter.emit("upload:start", filesToUpload)
-
-    for (const file of filesToUpload) {
-      try {
-        await uploadSingleFile(file)
-      } catch (err) {
-        const error = createFileError(file, err)
-        updateFile(file.id, { status: "error", error })
-        emitter.emit("file:error", { file, error })
-      }
-    }
-
-    const completed = files.value.filter((f) => f.status === "complete") as Array<Required<UploadFile<TUploadResult>>>
-    emitter.emit("upload:complete", completed)
-
-    const allComplete = files.value.length > 0 && files.value.every((f) => f.status === "complete")
-    if (allComplete && !hasEmittedFilesUploaded) {
-      hasEmittedFilesUploaded = true
-      emitter.emit("files:uploaded", files.value)
-    }
-  }
-
-  // Assign upload function to holder for file operations to use
-  uploadHolder.fn = upload
 
   // Clean up object URLs when component unmounts
   onBeforeUnmount(() => {
