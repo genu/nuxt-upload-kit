@@ -1,6 +1,13 @@
 import { isRef, toValue, watch } from "vue"
-import type { PluginContext, UploadFile, FileError, UploadOptions, InitialFileInput, StoragePlugin } from "./types"
-import type { Emitter } from "mitt"
+import type {
+  PluginContext,
+  UploadFile,
+  FileError,
+  UploadOptions,
+  InitialFileInput,
+  StoragePlugin,
+  UploaderEmitter,
+} from "./types"
 
 /**
  * Get file extension from filename
@@ -18,11 +25,11 @@ export function getExtension(fullFileName: string): string {
 /**
  * Create a plugin context object with consistent structure
  */
-export function createPluginContext<TPluginEvents extends Record<string, any> = Record<string, never>>(
+export function createPluginContext<TPluginEvents extends Record<string, any> = Record<string, never>, TUploadResult = unknown>(
   pluginId: string,
   files: UploadFile[],
   options: UploadOptions,
-  emitter: Emitter<any>,
+  emitter: UploaderEmitter<TUploadResult>,
   storage?: StoragePlugin<any, any>,
 ): PluginContext<TPluginEvents> {
   return {
@@ -30,7 +37,7 @@ export function createPluginContext<TPluginEvents extends Record<string, any> = 
     options,
     storage,
     emit: (event, payload) => {
-      const prefixedEvent = `${pluginId}:${String(event)}` as any
+      const prefixedEvent = `${pluginId}:${String(event)}`
       emitter.emit(prefixedEvent, payload)
     },
   }
