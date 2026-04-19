@@ -262,16 +262,16 @@ export const useUploadKit = <TUploadResult = unknown>(
     return resolved.filter((f) => f !== null) as UploadFile<TUploadResult>[]
   }
 
-  const initializeExistingFiles = async (initialFiles: InitialFileInput[]) => {
+  const setExistingFiles = async (initialFiles: InitialFileInput[]) => {
     const resolvedFiles = await resolveRemoteFiles(initialFiles)
     files.value = [...resolvedFiles]
   }
 
   /**
-   * Append pre-existing remote files without replacing current files.
+   * Add pre-existing remote files without replacing current files.
    * Skips files already present (matched by storageKey) and respects maxFiles.
    */
-  const appendExistingFiles = async (initialFiles: InitialFileInput[]): Promise<UploadFile<TUploadResult>[]> => {
+  const addExistingFiles = async (initialFiles: InitialFileInput[]): Promise<UploadFile<TUploadResult>[]> => {
     // Deduplicate: skip files already present by storageKey
     const existingKeys = new Set(files.value.map((f) => f.storageKey).filter(Boolean))
     let filesToAdd = initialFiles.filter((f) => f.storageKey && !existingKeys.has(f.storageKey))
@@ -361,7 +361,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     files,
     isReady,
     emitter,
-    initializeExistingFiles,
+    setExistingFiles,
   })
 
   return {
@@ -388,8 +388,8 @@ export const useUploadKit = <TUploadResult = unknown>(
     getFileStream: fileOps.getFileStream,
     replaceFileData: fileOps.replaceFileData,
     updateFile,
-    initializeExistingFiles,
-    appendExistingFiles,
+    setExistingFiles,
+    addExistingFiles,
 
     // Utilities
     addPlugin,
