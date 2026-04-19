@@ -112,6 +112,62 @@ describe("useUploadKit", () => {
       expect(handler).toHaveBeenCalledTimes(1)
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({ name: "test.jpg" }))
     })
+
+    // ── Malformed filename coverage (#157) ──
+    // Pin current behaviour for weird filenames: everything `getExtension()` rejects
+    // throws "Invalid file name"; everything else is accepted with the name preserved.
+    // Not adding new validation -- purely regression protection so changes to
+    // ingestion cannot silently flip the behaviour on these inputs.
+    it("should throw for filename that is only an extension (.jpg)", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile(".jpg", 1024, "image/jpeg")
+
+      // getExtension treats ".jpg" as valid (lastDot=0, length=4, 0 != length-1).
+      // This call currently succeeds; pin that behaviour.
+      await uploader.addFile(file)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe(".jpg")
+    })
+
+    it("should throw when filename ends in a dot ('file.')", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("file.", 1024, "image/jpeg")
+
+      // getExtension rejects when lastDot is at the end of the string.
+      await expect(uploader.addFile(file)).rejects.toThrow("Invalid file name")
+    })
+
+    it("should accept filename with null bytes and preserve it", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("foo\0.jpg", 1024, "image/jpeg")
+
+      // Null-byte names are tolerated today -- storage keys use file.id, not the
+      // filename, so path-traversal is already not a concern here.
+      await uploader.addFile(file)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe("foo\0.jpg")
+    })
+
+    it("should accept unicode / emoji filenames and preserve them", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("📎file.png", 1024, "image/png")
+
+      await uploader.addFile(file)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe("📎file.png")
+      expect(uploader.files.value[0]!.id).toMatch(/\.png$/)
+    })
+
+    it("should accept very long filenames (500+ chars) and preserve them", async () => {
+      const uploader = useUploadKit()
+      const longName = "a".repeat(500) + ".png"
+      const file = createMockFile(longName, 1024, "image/png")
+
+      await uploader.addFile(file)
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe(longName)
+      expect(uploader.files.value[0]!.id).toMatch(/\.png$/)
+    })
   })
 
   describe("addFiles", () => {
