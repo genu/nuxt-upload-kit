@@ -218,7 +218,7 @@ export function createFileOperations<TUploadResult = unknown>(deps: FileOperatio
    *   - `"always"` (default): Always delete from storage if the file has a remoteUrl
    *   - `"never"`: Never delete from storage, only remove from local state
    *   - `"local-only"`: Only delete files that were uploaded in this session (source === "local"),
-   *     preserving files that were loaded from storage via initializeExistingFiles
+   *     preserving files that were loaded from storage via setExistingFiles
    */
   const removeFile = async (
     fileId: string,
