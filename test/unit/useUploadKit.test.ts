@@ -701,7 +701,7 @@ describe("useUploadKit", () => {
         expect(completeHandler).toHaveBeenCalledTimes(2)
       })
 
-      it("should upload each file exactly once even when upload() is called back-to-back without awaiting", async () => {
+      it("should currently invoke storage upload twice when upload() is called back-to-back without awaiting (pinned; see #169)", async () => {
         const uploadHook = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" })
         const storage: StoragePlugin = {
           id: "test-storage",
