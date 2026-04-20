@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ref } from "vue"
 import { createMockFile, wait, createMockStoragePlugin } from "../helpers"
-import type { StoragePlugin } from "../../src/runtime/composables/useUploadKit/types"
+import type { ProcessingPlugin, StoragePlugin } from "../../src/runtime/composables/useUploadKit/types"
 
 // Mock Vue's onBeforeUnmount since we're not in a component context
 vi.mock("vue", async () => {
@@ -666,6 +666,162 @@ describe("useUploadKit", () => {
       // Storage plugin receives file with storageKey set
       expect(removeHook).toHaveBeenCalledWith(expect.objectContaining({ storageKey: "uploads/uploaded.jpg" }), expect.any(Object))
       expect(uploader.files.value).toHaveLength(0)
+    })
+
+    describe("double upload() calls", () => {
+      it("should not re-upload already-completed files on a second sequential upload() call", async () => {
+        const uploadHook = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" })
+        const storage: StoragePlugin = {
+          id: "test-storage",
+          upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" }),
+          hooks: { upload: uploadHook },
+        }
+        const uploader = useUploadKit({ storage })
+        const completeHandler = vi.fn()
+        const filesUploadedHandler = vi.fn()
+
+        uploader.on("upload:complete", completeHandler)
+        uploader.on("files:uploaded", filesUploadedHandler)
+
+        await uploader.addFile(createMockFile("a.jpg"))
+        await uploader.addFile(createMockFile("b.jpg"))
+
+        await uploader.upload()
+        await uploader.upload()
+
+        // Each file's storage upload hook is called exactly once
+        expect(uploadHook).toHaveBeenCalledTimes(2)
+        expect(uploader.files.value.every((f) => f.status === "complete")).toBe(true)
+
+        // files:uploaded fires once total (guarded by hasEmittedFilesUploaded)
+        expect(filesUploadedHandler).toHaveBeenCalledTimes(1)
+
+        // upload:complete fires per upload() call (current behavior) — second call emits with the
+        // already-complete files list even though no new work happened
+        expect(completeHandler).toHaveBeenCalledTimes(2)
+      })
+
+      it("should upload each file exactly once even when upload() is called back-to-back without awaiting", async () => {
+        const uploadHook = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" })
+        const storage: StoragePlugin = {
+          id: "test-storage",
+          upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" }),
+          hooks: { upload: uploadHook },
+        }
+        const uploader = useUploadKit({ storage })
+
+        await uploader.addFile(createMockFile("a.jpg"))
+
+        // Fire two upload() calls in the same synchronous tick — both filters run before any
+        // file's status flips to "uploading".
+        const p1 = uploader.upload()
+        const p2 = uploader.upload()
+        await Promise.all([p1, p2])
+
+        // Pins current behavior: concurrent unawaited calls result in the storage hook being
+        // invoked twice for the same file. If this test fails in the future because the count
+        // drops to 1, that's a bugfix — update the assertion.
+        expect(uploadHook).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    describe("addFile during active upload", () => {
+      it("should add the new file as 'waiting' while A is in the storage stage and pick it up on the next upload()", async () => {
+        let resolveUpload!: (value: { url: string; storageKey: string }) => void
+        const uploadHook = vi.fn(
+          () =>
+            new Promise<{ url: string; storageKey: string }>((resolve) => {
+              resolveUpload = resolve
+            }),
+        )
+        const storage: StoragePlugin = {
+          id: "test-storage",
+          upload: vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" }),
+          hooks: { upload: uploadHook },
+        }
+        const uploader = useUploadKit({ storage })
+
+        await uploader.addFile(createMockFile("a.jpg"))
+        const firstUpload = uploader.upload()
+
+        // Wait for A to enter the storage stage
+        await wait(10)
+        expect(uploadHook).toHaveBeenCalledTimes(1)
+        expect(uploader.files.value[0]!.status).toBe("uploading")
+
+        // Add B while A is mid-upload
+        await uploader.addFile(createMockFile("b.jpg"))
+        expect(uploader.files.value).toHaveLength(2)
+        expect(uploader.files.value[1]!.status).toBe("waiting")
+
+        // A's in-flight upload is untouched — B is not folded into the current batch
+        expect(uploadHook).toHaveBeenCalledTimes(1)
+
+        // Resolve A
+        resolveUpload({ url: "https://example.com/a.jpg", storageKey: "a" })
+        await firstUpload
+
+        expect(uploader.files.value[0]!.status).toBe("complete")
+        expect(uploader.files.value[1]!.status).toBe("waiting")
+
+        // A second upload() picks up B
+        resolveUpload = (() => {}) as typeof resolveUpload
+        uploadHook.mockResolvedValueOnce({ url: "https://example.com/b.jpg", storageKey: "b" })
+        await uploader.upload()
+
+        expect(uploadHook).toHaveBeenCalledTimes(2)
+        expect(uploader.files.value[1]!.status).toBe("complete")
+      })
+
+      it("should leave a file added during A's validate stage unaffected by the in-flight upload", async () => {
+        let resolveValidate!: (value: true) => void
+        const validateHook = vi.fn(
+          () =>
+            new Promise<true>((resolve) => {
+              resolveValidate = resolve
+            }),
+        )
+        const gatingValidator: ProcessingPlugin = {
+          id: "gating-validator",
+          hooks: { validate: validateHook },
+        }
+        const uploadHook = vi.fn().mockResolvedValue({ url: "https://example.com/a.jpg", storageKey: "a" })
+        const storage: StoragePlugin = {
+          id: "test-storage",
+          upload: vi.fn().mockResolvedValue({ url: "https://example.com/a.jpg", storageKey: "a" }),
+          hooks: { upload: uploadHook },
+        }
+        const uploader = useUploadKit({ storage, plugins: [gatingValidator] })
+
+        // Start adding A — its validate hook will hang
+        const addAPromise = uploader.addFile(createMockFile("a.jpg"))
+        await wait(10)
+        expect(validateHook).toHaveBeenCalledTimes(1)
+        // A has not been pushed yet — it's gated in validate
+        expect(uploader.files.value).toHaveLength(0)
+
+        // Release A
+        resolveValidate(true)
+        await addAPromise
+        expect(uploader.files.value).toHaveLength(1)
+        expect(uploader.files.value[0]!.status).toBe("waiting")
+
+        // Now kick off upload, then try to add B while A is uploading. B's validate hook
+        // will also hang — B is NOT yet in files.value and upload() continues with just A.
+        const firstUpload = uploader.upload()
+        const addBPromise = uploader.addFile(createMockFile("b.jpg"))
+        await wait(10)
+        expect(uploader.files.value).toHaveLength(1)
+        expect(uploadHook).toHaveBeenCalledTimes(1)
+
+        resolveValidate(true)
+        await Promise.all([firstUpload, addBPromise])
+
+        expect(uploader.files.value).toHaveLength(2)
+        expect(uploader.files.value[0]!.status).toBe("complete")
+        expect(uploader.files.value[1]!.status).toBe("waiting")
+        expect(uploadHook).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
