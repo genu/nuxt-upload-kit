@@ -101,6 +101,51 @@ describe("useUploadKit", () => {
       await expect(uploader.addFile(file)).rejects.toThrow("Invalid file name")
     })
 
+    it("should accept filenames containing a null byte and preserve the name", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("foo\0.jpg", 1024, "image/jpeg")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe("foo\0.jpg")
+      expect(uploader.files.value[0]!.id).toMatch(/\.jpg$/)
+    })
+
+    it("should accept unicode / emoji filenames and preserve the name", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile("📎file.png", 1024, "image/png")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe("📎file.png")
+      expect(uploader.files.value[0]!.id).toMatch(/\.png$/)
+    })
+
+    it("should accept very long filenames and preserve the name", async () => {
+      const uploader = useUploadKit()
+      const longName = `${"a".repeat(500)}.jpg`
+      const file = createMockFile(longName, 1024, "image/jpeg")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe(longName)
+      expect(uploader.files.value[0]!.id).toMatch(/\.jpg$/)
+    })
+
+    it("should accept dotfile-style names like '.jpg'", async () => {
+      const uploader = useUploadKit()
+      const file = createMockFile(".jpg", 1024, "image/jpeg")
+
+      await uploader.addFile(file)
+
+      expect(uploader.files.value).toHaveLength(1)
+      expect(uploader.files.value[0]!.name).toBe(".jpg")
+      expect(uploader.files.value[0]!.id).toMatch(/\.jpg$/)
+    })
+
     it("should emit file:added event when file is added", async () => {
       const uploader = useUploadKit()
       const file = createMockFile("test.jpg")

@@ -6,6 +6,7 @@ import {
   cleanupObjectURLs,
   dataUrlToBlob,
   deriveThumbnailKey,
+  getExtension,
 } from "../../src/runtime/composables/useUploadKit/utils"
 import { createMockLocalUploadFile } from "../helpers"
 import mitt from "mitt"
@@ -403,6 +404,48 @@ describe("utils", () => {
 
     it("should handle WebP extension", () => {
       expect(deriveThumbnailKey("image.webp")).toBe("image_thumb.webp")
+    })
+  })
+
+  describe("getExtension", () => {
+    it("should return the extension for a simple filename", () => {
+      expect(getExtension("photo.jpg")).toBe("jpg")
+    })
+
+    it("should lowercase the extension", () => {
+      expect(getExtension("photo.JPG")).toBe("jpg")
+    })
+
+    it("should use the last dot when there are multiple", () => {
+      expect(getExtension("archive.tar.gz")).toBe("gz")
+    })
+
+    it("should throw for filenames with no extension", () => {
+      expect(() => getExtension("noextension")).toThrow("Invalid file name")
+    })
+
+    it("should throw for filenames ending in a dot", () => {
+      expect(() => getExtension("trailing.")).toThrow("Invalid file name")
+    })
+
+    it("should throw for an empty string", () => {
+      expect(() => getExtension("")).toThrow("Invalid file name")
+    })
+
+    it("should accept dotfile-style names like '.jpg' and return the extension", () => {
+      expect(getExtension(".jpg")).toBe("jpg")
+    })
+
+    it("should accept names containing a null byte", () => {
+      expect(getExtension("foo\0.jpg")).toBe("jpg")
+    })
+
+    it("should accept unicode and emoji in the filename", () => {
+      expect(getExtension("📎file.png")).toBe("png")
+    })
+
+    it("should accept very long filenames", () => {
+      expect(getExtension(`${"a".repeat(500)}.jpg`)).toBe("jpg")
     })
   })
 })
