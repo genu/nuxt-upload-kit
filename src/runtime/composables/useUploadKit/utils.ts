@@ -143,16 +143,23 @@ export function setupInitialFiles<TUploadResult>({
   isReady,
   emitter,
   setExistingFiles,
+  onReady,
 }: {
   initialFiles: UploadOptions["initialFiles"]
   files: { value: UploadFile<TUploadResult>[] }
   isReady: { value: boolean }
   emitter: { emit: (type: string, data: unknown) => void }
   setExistingFiles: (files: InitialFileInput[]) => Promise<void>
+  onReady: () => void
 }) {
   if (initialFiles === undefined) return
 
   let isInitialized = false
+
+  const markReady = () => {
+    isReady.value = true
+    onReady()
+  }
 
   const doInitialize = async (value: string | string[] | undefined) => {
     if (isInitialized || !value || files.value.length > 0) return
@@ -162,14 +169,14 @@ export function setupInitialFiles<TUploadResult>({
       isInitialized = true
       try {
         await setExistingFiles(paths.map((storageKey) => ({ storageKey })))
-        isReady.value = true
         emitter.emit("initialFiles:loaded", files.value)
       } catch (error) {
-        isReady.value = true
         emitter.emit("initialFiles:error", error)
+      } finally {
+        markReady()
       }
     } else {
-      isReady.value = true
+      markReady()
     }
   }
 

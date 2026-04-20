@@ -1375,6 +1375,56 @@ describe("useUploadKit", () => {
       expect(uploader.files.value).toHaveLength(0)
     })
 
+    it("should resolve `ready` immediately when no initialFiles provided", async () => {
+      const uploader = useUploadKit()
+      await expect(uploader.ready).resolves.toBeUndefined()
+    })
+
+    it("should resolve `ready` after initialFiles load successfully", async () => {
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: createMockStoragePlugin(),
+      })
+
+      await uploader.ready
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(1)
+    })
+
+    it("should resolve `ready` even when initialFiles loading fails", async () => {
+      const uploader = useUploadKit({
+        initialFiles: ["file1.jpg"],
+        storage: createMockStoragePlugin({
+          getRemoteFileFn: async () => {
+            throw new Error("Storage unavailable")
+          },
+        }),
+      })
+
+      await expect(uploader.ready).resolves.toBeUndefined()
+      expect(uploader.isReady.value).toBe(true)
+    })
+
+    it("should resolve `ready` for empty initialFiles array", async () => {
+      const uploader = useUploadKit({ initialFiles: [] })
+      await expect(uploader.ready).resolves.toBeUndefined()
+    })
+
+    it("should resolve `ready` after deferred ref populates", async () => {
+      const filesRef = ref<string[] | undefined>(undefined)
+      const uploader = useUploadKit({
+        initialFiles: filesRef,
+        storage: createMockStoragePlugin(),
+      })
+
+      filesRef.value = ["deferred.jpg"]
+      await uploader.ready
+
+      expect(uploader.isReady.value).toBe(true)
+      expect(uploader.files.value).toHaveLength(1)
+    })
+
     it("should set uploadResult on initialized files from storage plugin", async () => {
       // This test ensures that files initialized via initialFiles have uploadResult set,
       // making them consistent with newly uploaded files. This is important for consumers

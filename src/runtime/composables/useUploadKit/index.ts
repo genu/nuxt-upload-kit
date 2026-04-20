@@ -39,6 +39,12 @@ export const useUploadKit = <TUploadResult = unknown>(
   const status = ref<UploadStatus>("waiting")
   const isReady = ref(options.initialFiles === undefined)
 
+  let resolveReady!: () => void
+  const ready = new Promise<void>((resolve) => {
+    resolveReady = resolve
+  })
+  if (options.initialFiles === undefined) resolveReady()
+
   // Track created object URLs for automatic cleanup
   const createdObjectURLs = new Map<string, string>()
 
@@ -362,6 +368,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     isReady,
     emitter,
     setExistingFiles,
+    onReady: resolveReady,
   })
 
   return {
@@ -369,6 +376,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     files: readonly(files),
     totalProgress,
     isReady: readonly(isReady),
+    ready,
 
     // Core Methods
     addFiles,
