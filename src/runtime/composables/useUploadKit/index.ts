@@ -174,7 +174,15 @@ export const useUploadKit = <TUploadResult = unknown>(
   }
 
   const upload = async () => {
-    const filesToUpload = files.value.filter((f) => f.status === "waiting")
+    // Synchronously flip status off "waiting" so a concurrent upload() call
+    // issued in the same tick won't re-select these files (see #169).
+    const idsToUpload = files.value.filter((f) => f.status === "waiting").map((f) => f.id)
+    for (const id of idsToUpload) {
+      updateFile(id, { status: "uploading" })
+    }
+    const filesToUpload = idsToUpload
+      .map((id) => files.value.find((f) => f.id === id))
+      .filter((f): f is UploadFile<TUploadResult> => f !== undefined)
 
     emitter.emit("upload:start", filesToUpload)
 

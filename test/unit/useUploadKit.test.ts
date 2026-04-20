@@ -701,7 +701,7 @@ describe("useUploadKit", () => {
         expect(completeHandler).toHaveBeenCalledTimes(2)
       })
 
-      it("should currently invoke storage upload twice when upload() is called back-to-back without awaiting (pinned; see #169)", async () => {
+      it("should upload each file exactly once even when upload() is called back-to-back without awaiting (#169)", async () => {
         const uploadHook = vi.fn().mockResolvedValue({ url: "https://example.com/file.jpg", storageKey: "k" })
         const storage: StoragePlugin = {
           id: "test-storage",
@@ -718,10 +718,7 @@ describe("useUploadKit", () => {
         const p2 = uploader.upload()
         await Promise.all([p1, p2])
 
-        // Pins current behavior: concurrent unawaited calls result in the storage hook being
-        // invoked twice for the same file. If this test fails in the future because the count
-        // drops to 1, that's a bugfix — update the assertion.
-        expect(uploadHook).toHaveBeenCalledTimes(2)
+        expect(uploadHook).toHaveBeenCalledTimes(1)
       })
     })
 
