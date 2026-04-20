@@ -271,8 +271,17 @@ describe("ValidatorDuplicateFile", () => {
 
     it("should handle empty filename", async () => {
       const validator = ValidatorDuplicateFile({})
-      const existingFile = createMockLocalUploadFile({ name: "", size: 1024 })
-      const newFile = createMockLocalUploadFile({ name: "", size: 1024 })
+      const lastModified = Date.now()
+      const existingFile = createMockLocalUploadFile({
+        name: "",
+        size: 1024,
+        data: createMockFile("test-file.jpg", 1024, "image/jpeg", lastModified),
+      })
+      const newFile = createMockLocalUploadFile({
+        name: "",
+        size: 1024,
+        data: createMockFile("test-file.jpg", 1024, "image/jpeg", lastModified),
+      })
       const context = createMockPluginContext([existingFile])
 
       await expect(validator.hooks.validate!(newFile, context)).rejects.toEqual({
