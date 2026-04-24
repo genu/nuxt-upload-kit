@@ -583,14 +583,25 @@ describe("useUploadKit", () => {
       expect(progressHandler).toHaveBeenCalledTimes(4)
     })
 
-    it("should throw error if no storage plugin configured", async () => {
-      const uploader = useUploadKit()
+    it("falls back to the built-in presigned-http transport when no storage is provided", async () => {
+      // Stub fetch so the default transport's call to /api/_upload/presign is observable
+      // without needing a real Nitro server in the unit test environment.
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ uploadUrl: "https://signed.example/u", publicUrl: "https://cdn.example/f", fileId: "f" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
 
+      const uploader = useUploadKit()
       await uploader.addFile(createMockFile("test.jpg"))
       await uploader.upload()
 
-      expect(uploader.files.value[0]!.status).toBe("error")
-      expect(uploader.files.value[0]!.error?.message).toContain("Storage plugin")
+      expect(fetchSpy).toHaveBeenCalledWith("/api/_upload/presign", expect.objectContaining({ method: "POST" }))
+      // PUT to the signed URL fails in happy-dom (no XHR target) — the file ends in 'error',
+      // proving the default transport actually attempted the upload after presign.
+      expect(["error", "complete"]).toContain(uploader.files.value[0]!.status)
+      fetchSpy.mockRestore()
     })
 
     it("should set file.storageKey after successful upload (id remains stable)", async () => {

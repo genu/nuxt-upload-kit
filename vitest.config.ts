@@ -29,6 +29,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "#upload-kit": resolve(__dirname, "./src/runtime/types"),
+      "#upload-kit-user-config": resolve(__dirname, "./test/fixtures/empty-user-config.ts"),
     },
   },
 })

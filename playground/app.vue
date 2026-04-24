@@ -1,49 +1,31 @@
 <script setup lang="ts">
 const uploader = useUploadKit({
   maxFiles: 5,
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 10 * 1024 * 1024,
   thumbnails: true,
-  imageCompression: {
-    maxWidth: 1920,
-    maxHeight: 1920,
-    quality: 0.85,
-  },
 })
 
-// Handle file selection
 const onFileSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (input.files) {
-    await uploader.addFiles(Array.from(input.files))
-  }
+  if (input.files) await uploader.addFiles(Array.from(input.files))
 }
 
-// Configure custom upload handler (for demo purposes, just logs)
-uploader.onUpload(async (file, onProgress) => {
-  console.log("Uploading:", file.name)
-
-  // Simulate upload progress
-  for (let i = 0; i <= 100; i += 10) {
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    onProgress(i)
-  }
-
-  return { url: `https://example.com/uploads/${file.id}` }
-})
-
-// Listen to events
 uploader.on("file:added", (file) => {
-  console.log("File added:", file.name)
+  console.log("file:added", file.name)
 })
 
 uploader.on("upload:complete", (files) => {
-  console.log("Upload complete:", files.length, "files")
+  console.log("upload:complete", files.length)
 })
 </script>
 
 <template>
   <div class="p-8 max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Nuxt Upload Kit Playground</h1>
+    <h1 class="text-2xl font-bold mb-2">Nuxt Upload Kit Playground</h1>
+    <p class="text-sm text-gray-500 mb-6">
+      Default <code>useUploadKit()</code> uses the auto-mounted <code>/api/_upload/presign</code> endpoint backed by
+      <code>~~/server/upload.server.config.ts</code>.
+    </p>
 
     <div class="mb-6">
       <input
@@ -72,6 +54,8 @@ uploader.on("upload:complete", (files) => {
           <p class="font-medium">{{ file.name }}</p>
           <p class="text-sm text-gray-500">{{ (file.size / 1024).toFixed(2) }} KB</p>
           <p class="text-xs text-gray-400">Status: {{ file.status }}</p>
+          <p v-if="file.remoteUrl" class="text-xs text-green-600 break-all">{{ file.remoteUrl }}</p>
+          <p v-if="file.error" class="text-xs text-red-600">{{ file.error.message }}</p>
           <div v-if="file.status === 'uploading'" class="mt-1 w-full bg-gray-200 rounded-full h-2">
             <div class="bg-blue-600 h-2 rounded-full transition-all" :style="{ width: `${file.progress.percentage}%` }"></div>
           </div>

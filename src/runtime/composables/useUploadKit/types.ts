@@ -209,18 +209,23 @@ export type UploadFile<TUploadResult = unknown> = LocalUploadFile<TUploadResult>
 // Configuration
 export interface UploadOptions {
   /**
-   * Storage plugin for uploading files (only one storage plugin can be active)
-   *
-   * Storage plugins handle the actual upload, download, and deletion of files
-   * from remote storage (Azure, S3, GCS, etc.)
-   *
-   * @example
-   * ```typescript
-   * storage: PluginAzureDataLake({
-   *   sasURL: 'https://...',
-   *   path: 'uploads'
-   * })
-   * ```
+   * Transport mode. Defaults to "presigned": the client requests a signed URL from the
+   * configured server endpoint, then PUTs the file directly to cloud storage. Server
+   * forwarding (`mode: "server"`) lands in a follow-up.
+   * @default "presigned"
+   */
+  mode?: "presigned"
+
+  /**
+   * Override the auto-mounted upload endpoint path. Defaults to the module's `handlerRoute`
+   * (configured in `nuxt.config.ts > uploadKit.handlerRoute`, default `/api/_upload`).
+   */
+  endpoint?: string
+
+  /**
+   * Low-level escape hatch: pass a storage plugin object directly. Bypasses `mode`/`endpoint`
+   * and the server-side config. Use only when uploading direct browser-to-cloud with
+   * caller-managed credentials (e.g. legacy Azure SAS flows).
    */
   storage?: StoragePlugin<any, any>
 
