@@ -1,5 +1,6 @@
 import { defineUploadServerConfig, MaxFileSize, AllowedMimeTypes } from "#upload-kit/server"
 import { S3Storage } from "nuxt-upload-kit/server/s3"
+// Also available: AzureStorage from "nuxt-upload-kit/server/azure", FirebaseStorage from "nuxt-upload-kit/server/firebase"
 
 const env = process.env
 
