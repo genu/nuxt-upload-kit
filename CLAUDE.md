@@ -110,6 +110,10 @@ The `/docs` folder uses Docus (built on Nuxt Content):
 - Config: `docs/app.config.ts` (header, socials, theme)
 - MDC components: `::component-name` syntax for Vue components in markdown
 
+### Docs deployment
+
+Vercel's production branch is `release`, not `master`. The Release workflow fast-forwards `release` to the published commit after a successful `npm publish`, so prod docs always match the latest published npm version. Master pushes only get Vercel preview deploys per-PR.
+
 ## Code Review Guidelines
 
 When reviewing storage adapters or SDK integrations, do NOT recommend:
