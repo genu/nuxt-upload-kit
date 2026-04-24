@@ -41,8 +41,17 @@ export const S3Storage = (options: S3StorageOptions): StorageAdapter => {
 
   const defaultPublicUrl = (key: string): string => {
     if (options.endpoint) {
+      // Virtual-hosted style against a custom endpoint requires DNS wildcard config the
+      // user is unlikely to have. Force the caller to opt into path-style or supply their own
+      // publicUrl resolver (e.g. CDN domain) rather than silently producing wrong URLs.
+      if (!options.forcePathStyle) {
+        throw new Error(
+          "[nuxt-upload-kit] S3Storage: `endpoint` requires `forcePathStyle: true` (or a custom `publicUrl` resolver). " +
+            "Virtual-hosted-style URLs against custom endpoints need DNS wildcard configuration.",
+        )
+      }
       const base = options.endpoint.replace(/\/+$/, "")
-      return options.forcePathStyle ? `${base}/${options.bucket}/${key}` : `${base}/${key}`
+      return `${base}/${options.bucket}/${key}`
     }
     return `https://${options.bucket}.s3.${options.region}.amazonaws.com/${key}`
   }

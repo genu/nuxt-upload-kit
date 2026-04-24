@@ -40,6 +40,19 @@ describe("S3Storage", () => {
     expect(result.publicUrl).toBe("https://b.s3.us-east-1.amazonaws.com/tenant-42/logo.svg")
   })
 
+  it("rejects custom endpoints without forcePathStyle (would otherwise drop the bucket)", async () => {
+    const storage = S3Storage({
+      bucket: "b",
+      region: "us-east-1",
+      endpoint: "https://custom.example.com",
+      credentials: { accessKeyId: "x", secretAccessKey: "y" },
+    })
+
+    await expect(
+      storage.presignUpload({ fileId: "f", name: "f", size: 1, mimeType: "application/octet-stream" }, ctx),
+    ).rejects.toThrow(/forcePathStyle/)
+  })
+
   it("uses path-style URLs for S3-compatible endpoints", async () => {
     const storage = S3Storage({
       bucket: "minio-bucket",

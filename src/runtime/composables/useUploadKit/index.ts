@@ -20,7 +20,18 @@ import { createPluginContext, createFileError, getExtension, setupInitialFiles }
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
 
+import { useRuntimeConfig } from "#imports"
+
 const DEFAULT_ENDPOINT = "/api/_upload"
+
+const resolveDefaultEndpoint = (): string => {
+  try {
+    const cfg = useRuntimeConfig?.()?.public as { uploadKit?: { handlerRoute?: string } } | undefined
+    return cfg?.uploadKit?.handlerRoute || DEFAULT_ENDPOINT
+  } catch {
+    return DEFAULT_ENDPOINT
+  }
+}
 
 const defaultOptions: UploadOptions = {
   storage: undefined,
@@ -62,7 +73,7 @@ export const useUploadKit = <TUploadResult = unknown>(
   const getStoragePlugin = (): StoragePlugin<TUploadResult, any> | null => {
     if (options.storage) return options.storage as StoragePlugin<TUploadResult, any>
     defaultTransport ??= PluginPresignedHttp({
-      endpoint: options.endpoint ?? DEFAULT_ENDPOINT,
+      endpoint: options.endpoint ?? resolveDefaultEndpoint(),
     }) as unknown as StoragePlugin<TUploadResult, any>
     return defaultTransport
   }

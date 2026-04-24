@@ -593,15 +593,18 @@ describe("useUploadKit", () => {
         }),
       )
 
-      const uploader = useUploadKit()
-      await uploader.addFile(createMockFile("test.jpg"))
-      await uploader.upload()
+      try {
+        const uploader = useUploadKit()
+        await uploader.addFile(createMockFile("test.jpg"))
+        await uploader.upload()
 
-      expect(fetchSpy).toHaveBeenCalledWith("/api/_upload/presign", expect.objectContaining({ method: "POST" }))
-      // PUT to the signed URL fails in happy-dom (no XHR target) — the file ends in 'error',
-      // proving the default transport actually attempted the upload after presign.
-      expect(["error", "complete"]).toContain(uploader.files.value[0]!.status)
-      fetchSpy.mockRestore()
+        expect(fetchSpy).toHaveBeenCalledWith("/api/_upload/presign", expect.objectContaining({ method: "POST" }))
+        // PUT to the signed URL fails in happy-dom (no XHR target) — the file ends in 'error',
+        // proving the default transport actually attempted the upload after presign.
+        expect(["error", "complete"]).toContain(uploader.files.value[0]!.status)
+      } finally {
+        fetchSpy.mockRestore()
+      }
     })
 
     it("should set file.storageKey after successful upload (id remains stable)", async () => {

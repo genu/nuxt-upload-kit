@@ -9,7 +9,15 @@ const config = userConfig as UploadServerConfig
 const isFileDescriptor = (v: unknown): v is UploadFileDescriptor => {
   if (!v || typeof v !== "object") return false
   const f = v as Record<string, unknown>
-  return typeof f.name === "string" && typeof f.size === "number" && typeof f.mimeType === "string"
+  return (
+    typeof f.name === "string" &&
+    f.name.length > 0 &&
+    typeof f.size === "number" &&
+    Number.isFinite(f.size) &&
+    f.size >= 0 &&
+    typeof f.mimeType === "string" &&
+    f.mimeType.length > 0
+  )
 }
 
 const generateFileId = (file: UploadFileDescriptor): string => {

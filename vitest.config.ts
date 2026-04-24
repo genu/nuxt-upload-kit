@@ -30,6 +30,7 @@ export default defineConfig({
     alias: {
       "#upload-kit": resolve(__dirname, "./src/runtime/types"),
       "#upload-kit-user-config": resolve(__dirname, "./test/fixtures/empty-user-config.ts"),
+      "#imports": resolve(__dirname, "./test/fixtures/nuxt-imports.ts"),
     },
   },
 })

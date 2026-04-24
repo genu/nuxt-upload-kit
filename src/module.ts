@@ -93,6 +93,13 @@ export default defineNuxtModule<ModuleOptions>({
 
     const handlerRoute = options.handlerRoute ?? "/api/_upload"
 
+    // Expose to the client default transport so customizing handlerRoute doesn't force every
+    // useUploadKit() call to also pass `endpoint`.
+    nuxt.options.runtimeConfig.public.uploadKit = {
+      ...(nuxt.options.runtimeConfig.public.uploadKit as Record<string, unknown> | undefined),
+      handlerRoute,
+    }
+
     addServerHandler({
       route: `${handlerRoute}/presign`,
       method: "post",
