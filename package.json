@@ -44,6 +44,10 @@
     "./server/azure": {
       "types": "./dist/server/azure.d.mts",
       "import": "./dist/server/azure.mjs"
+    },
+    "./server/firebase": {
+      "types": "./dist/server/firebase.d.mts",
+      "import": "./dist/server/firebase.mjs"
     }
   },
   "scripts": {
@@ -85,6 +89,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
     "firebase": "12.12.1",
+    "firebase-admin": "13.8.0",
     "h3": "1.15.11",
     "happy-dom": "20.9.0",
     "nuxt": "4.4.2",
@@ -103,7 +108,8 @@
     "@azure/storage-file-datalake": "^12.0.0",
     "@ffmpeg/ffmpeg": "^0.12.0",
     "@ffmpeg/util": "^0.12.0",
-    "firebase": "^10.0.0 || ^11.0.0 || ^12.0.0"
+    "firebase": "^10.0.0 || ^11.0.0 || ^12.0.0",
+    "firebase-admin": "^12.0.0 || ^13.0.0"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-s3": {
@@ -128,6 +134,9 @@
       "optional": true
     },
     "firebase": {
+      "optional": true
+    },
+    "firebase-admin": {
       "optional": true
     }
   },
