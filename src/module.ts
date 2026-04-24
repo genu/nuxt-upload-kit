@@ -105,5 +105,17 @@ export default defineNuxtModule<ModuleOptions>({
       method: "post",
       handler: resolver.resolve("./runtime/server/handlers/presign"),
     })
+
+    addServerHandler({
+      route: `${handlerRoute}/download/:fileId`,
+      method: "get",
+      handler: resolver.resolve("./runtime/server/handlers/download"),
+    })
+
+    addServerHandler({
+      route: `${handlerRoute}/:fileId`,
+      method: "delete",
+      handler: resolver.resolve("./runtime/server/handlers/delete"),
+    })
   },
 })
