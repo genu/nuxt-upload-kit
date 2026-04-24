@@ -1,4 +1,4 @@
-import { defineEventHandler, readMultipartFormData, createError } from "h3"
+import { defineEventHandler, readMultipartFormData, createError, getRequestHeader } from "h3"
 // @ts-expect-error virtual user-config import
 import userConfig from "#upload-kit-user-config"
 import type { UploadServerConfig, UploadFileDescriptor, ServerHookContext } from "../types"
@@ -27,6 +27,17 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Not Implemented",
       message: `Storage adapter "${config.storage.id}" does not implement put().`,
     })
+  }
+
+  if (config.maxBodySize != null) {
+    const contentLength = Number(getRequestHeader(event, "content-length"))
+    if (Number.isFinite(contentLength) && contentLength > config.maxBodySize) {
+      throw createError({
+        statusCode: 413,
+        statusMessage: "Payload Too Large",
+        message: `Request body exceeds maxBodySize (${config.maxBodySize} bytes).`,
+      })
+    }
   }
 
   const parts = await readMultipartFormData(event)
