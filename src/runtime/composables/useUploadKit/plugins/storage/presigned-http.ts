@@ -29,7 +29,12 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
       const text = await response.text().catch(() => "")
       throw new Error(`[presigned-http] ${presignEndpoint} returned ${response.status}: ${text}`)
     }
-    return (await response.json()) as { uploadUrl: string; publicUrl: string; fileId: string }
+    return (await response.json()) as {
+      uploadUrl: string
+      publicUrl: string
+      fileId: string
+      headers?: Record<string, string>
+    }
   }
 
   const putWithProgress = (
@@ -37,6 +42,7 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
     data: File | Blob,
     contentType: string,
     onProgress: (percentage: number) => void,
+    extraHeaders?: Record<string, string>,
   ): Promise<string | undefined> =>
     new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
@@ -54,6 +60,9 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
       xhr.addEventListener("abort", () => reject(new Error("Upload was aborted")))
       xhr.open("PUT", url)
       xhr.setRequestHeader("Content-Type", contentType)
+      if (extraHeaders) {
+        for (const [k, v] of Object.entries(extraHeaders)) xhr.setRequestHeader(k, v)
+      }
       xhr.send(data)
     })
 
@@ -61,12 +70,12 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
     id: "presigned-http",
     async upload(data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) {
       const contentType = uploadOptions?.contentType || "application/octet-stream"
-      const { uploadUrl, publicUrl, fileId } = await requestPresign({
+      const { uploadUrl, publicUrl, fileId, headers } = await requestPresign({
         name: storageKey,
         size: data.size,
         mimeType: contentType,
       })
-      const etag = await putWithProgress(uploadUrl, data, contentType, uploadOptions?.onProgress || (() => {}))
+      const etag = await putWithProgress(uploadUrl, data, contentType, uploadOptions?.onProgress || (() => {}), headers)
       return { url: publicUrl, storageKey: fileId, etag }
     },
     hooks: {
@@ -74,12 +83,12 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
         if (file.source !== "local" || file.data === null) {
           throw new Error("Cannot upload remote file - no local data available")
         }
-        const { uploadUrl, publicUrl, fileId } = await requestPresign({
+        const { uploadUrl, publicUrl, fileId, headers } = await requestPresign({
           name: file.name,
           size: file.size,
           mimeType: file.mimeType,
         })
-        const etag = await putWithProgress(uploadUrl, file.data, file.mimeType, context.onProgress)
+        const etag = await putWithProgress(uploadUrl, file.data, file.mimeType, context.onProgress, headers)
         return { url: publicUrl, storageKey: fileId, etag }
       },
     },

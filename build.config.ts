@@ -1,7 +1,7 @@
 import { defineBuildConfig } from "unbuild"
 
 const providers = ["s3", "azure-datalake", "firebase"]
-const serverEntries = ["index", "s3"]
+const serverEntries = ["index", "s3", "azure"]
 
 export default defineBuildConfig({
   entries: [
@@ -16,5 +16,12 @@ export default defineBuildConfig({
       declaration: true,
     })),
   ],
-  externals: ["@azure/storage-file-datalake", "firebase/storage", "@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner", "h3"],
+  externals: [
+    "@azure/storage-blob",
+    "@azure/storage-file-datalake",
+    "firebase/storage",
+    "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
+    "h3",
+  ],
 })
