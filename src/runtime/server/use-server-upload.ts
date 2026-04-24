@@ -1,7 +1,7 @@
 import type { H3Event } from "h3"
 import type { ServerUpload } from "./types"
 
-const NOT_CONFIGURED = (op: string) => () => {
+const NOT_CONFIGURED = (op: string) => async () => {
   throw new Error(
     `[nuxt-upload-kit] useServerUpload().${op}() called but server is not configured. ` +
       `Create ~~/server/upload.server.config.ts and export defineUploadServerConfig({ storage, ... }).`,

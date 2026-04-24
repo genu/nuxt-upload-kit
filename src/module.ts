@@ -85,6 +85,7 @@ export default defineNuxtModule<ModuleOptions>({
         "No server config found at `server/upload.server.config.ts`. Server-side uploads are disabled. " +
           "Create the file and export `defineUploadServerConfig({ storage, ... })` to enable them.",
       )
+      return
     }
 
     // Catch-all stub handler
