@@ -16,6 +16,7 @@ import type {
 import { ValidatorAllowedFileTypes, ValidatorMaxFileSize, ValidatorMaxFiles } from "./validators"
 import { PluginThumbnailGenerator, PluginImageCompressor } from "./plugins"
 import { PluginPresignedHttp } from "./plugins/storage/presigned-http"
+import { PluginServerUpload } from "./plugins/storage/server-upload"
 import { createPluginContext, createFileError, getExtension, setupInitialFiles } from "./utils"
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
@@ -72,9 +73,11 @@ export const useUploadKit = <TUploadResult = unknown>(
   let defaultTransport: StoragePlugin<TUploadResult, any> | null = null
   const getStoragePlugin = (): StoragePlugin<TUploadResult, any> | null => {
     if (options.storage) return options.storage as StoragePlugin<TUploadResult, any>
-    defaultTransport ??= PluginPresignedHttp({
-      endpoint: options.endpoint ?? resolveDefaultEndpoint(),
-    }) as unknown as StoragePlugin<TUploadResult, any>
+    if (!defaultTransport) {
+      const endpoint = options.endpoint ?? resolveDefaultEndpoint()
+      const factory = options.mode === "server" ? PluginServerUpload : PluginPresignedHttp
+      defaultTransport = factory({ endpoint }) as unknown as StoragePlugin<TUploadResult, any>
+    }
     return defaultTransport
   }
 

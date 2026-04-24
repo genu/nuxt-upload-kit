@@ -1,31 +1,47 @@
 <script setup lang="ts">
-const uploader = useUploadKit({
+const mode = ref<"presigned" | "server">("presigned")
+
+const presignedUploader = useUploadKit({
+  mode: "presigned",
   maxFiles: 5,
   maxFileSize: 10 * 1024 * 1024,
   thumbnails: true,
 })
 
+const serverUploader = useUploadKit({
+  mode: "server",
+  maxFiles: 5,
+  maxFileSize: 10 * 1024 * 1024,
+  thumbnails: true,
+})
+
+const uploader = computed(() => (mode.value === "server" ? serverUploader : presignedUploader))
+
 const onFileSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (input.files) await uploader.addFiles(Array.from(input.files))
+  if (input.files) await uploader.value.addFiles(Array.from(input.files))
+  input.value = ""
 }
-
-uploader.on("file:added", (file) => {
-  console.log("file:added", file.name)
-})
-
-uploader.on("upload:complete", (files) => {
-  console.log("upload:complete", files.length)
-})
 </script>
 
 <template>
   <div class="p-8 max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold mb-2">Nuxt Upload Kit Playground</h1>
-    <p class="text-sm text-gray-500 mb-6">
-      Default <code>useUploadKit()</code> uses the auto-mounted <code>/api/_upload/presign</code> endpoint backed by
-      <code>~~/server/upload.server.config.ts</code>.
+    <p class="text-sm text-gray-500 mb-4">
+      Toggle between <code>mode: "presigned"</code> (client → signed URL → storage) and <code>mode: "server"</code> (client →
+      <code>/api/_upload/direct</code> → storage).
     </p>
+
+    <div class="mb-6 flex gap-4 text-sm">
+      <label class="flex items-center gap-2">
+        <input v-model="mode" type="radio" value="presigned" />
+        presigned
+      </label>
+      <label class="flex items-center gap-2">
+        <input v-model="mode" type="radio" value="server" />
+        server
+      </label>
+    </div>
 
     <div class="mb-6">
       <input
@@ -38,7 +54,7 @@ uploader.on("upload:complete", (files) => {
     </div>
 
     <div v-if="uploader.files.length > 0" class="space-y-4">
-      <h2 class="text-lg font-semibold">Files ({{ uploader.files.length }})</h2>
+      <h2 class="text-lg font-semibold">Files ({{ uploader.files.length }}) · mode: {{ mode }}</h2>
 
       <div v-for="file in uploader.files" :key="file.id" class="flex items-center gap-4 p-4 border rounded-lg">
         <img

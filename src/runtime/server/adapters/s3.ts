@@ -1,5 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+import { Upload } from "@aws-sdk/lib-storage"
+import type { Readable } from "node:stream"
 import type { StorageAdapter, PresignedFileInput, ServerHookContext } from "../types"
 
 export interface S3StorageOptions {
@@ -59,6 +61,7 @@ export const S3Storage = (options: S3StorageOptions): StorageAdapter => {
 
   return {
     id: "s3-storage",
+    resolveKey: keyStrategy,
     presignUpload: async (input: PresignedFileInput, _ctx: ServerHookContext) => {
       const key = keyStrategy(input)
       const command = new PutObjectCommand({
@@ -81,6 +84,19 @@ export const S3Storage = (options: S3StorageOptions): StorageAdapter => {
     },
     delete: async (key: string) => {
       await client.send(new DeleteObjectCommand({ Bucket: options.bucket, Key: key }))
+    },
+    put: async (input: { key: string; body: unknown; contentType?: string }) => {
+      const upload = new Upload({
+        client,
+        params: {
+          Bucket: options.bucket,
+          Key: input.key,
+          Body: input.body as Buffer | Uint8Array | Blob | Readable | string,
+          ContentType: input.contentType,
+        },
+      })
+      await upload.done()
+      return { publicUrl: publicUrl(input.key) }
     },
   }
 }

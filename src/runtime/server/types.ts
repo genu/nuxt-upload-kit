@@ -53,6 +53,11 @@ export interface StorageAdapter {
   delete?: (key: string, ctx: ServerHookContext) => Promise<void>
   put?: (input: { key: string; body: unknown; contentType?: string }, ctx: ServerHookContext) => Promise<{ publicUrl: string }>
   list?: (prefix: string | undefined, ctx: ServerHookContext) => Promise<Array<{ key: string; size: number }>>
+  /**
+   * Resolve the final storage key for a given file descriptor using the adapter's keyStrategy.
+   * Used by the /direct handler so direct uploads share the same key resolution as presigned uploads.
+   */
+  resolveKey?: (input: PresignedFileInput) => string
 }
 
 /**
