@@ -85,4 +85,22 @@ describe("AzureStorage", () => {
     expect(downloadUrl).toContain("sp=r")
     expect(downloadUrl).toContain("sig=")
   })
+
+  it("percent-encodes reserved characters in keys per path segment", async () => {
+    const storage = AzureStorage({
+      account: "s",
+      container: "c",
+      credentials: { accountKey: ACCOUNT_KEY },
+      keyStrategy: ({ fileId }) => `tenant a/${fileId}`,
+    })
+
+    const result = await storage.presignUpload(
+      { fileId: "weird?name#1+2.png", name: "weird?name#1+2.png", size: 1, mimeType: "image/png" },
+      ctx,
+    )
+
+    // `/` between segments preserved; reserved chars within a segment are encoded.
+    expect(result.uploadUrl.startsWith("https://s.blob.core.windows.net/c/tenant%20a/weird%3Fname%231%2B2.png?")).toBe(true)
+    expect(result.publicUrl).toBe("https://s.blob.core.windows.net/c/tenant%20a/weird%3Fname%231%2B2.png")
+  })
 })

@@ -40,7 +40,10 @@ export const AzureStorage = (options: AzureStorageOptions): StorageAdapter => {
 
   const expiresIn = options.expiresIn ?? 900
   const keyStrategy = options.keyStrategy ?? ((input) => `uploads/${input.fileId}`)
-  const defaultPublicUrl = (key: string): string => `${blobEndpoint}/${options.container}/${encodeURI(key)}`
+  // Encode each path segment so reserved chars (?, #, +, etc.) round-trip back to the
+  // signed blobName when Azure validates the SAS. encodeURI alone leaves ? and # intact.
+  const encodeBlobPath = (key: string): string => key.split("/").map(encodeURIComponent).join("/")
+  const defaultPublicUrl = (key: string): string => `${blobEndpoint}/${options.container}/${encodeBlobPath(key)}`
   const publicUrl = options.publicUrl ?? defaultPublicUrl
 
   const buildSas = (key: string, permissions: BlobSASPermissions, contentType?: string): string =>
@@ -56,7 +59,7 @@ export const AzureStorage = (options: AzureStorageOptions): StorageAdapter => {
       sharedKey,
     ).toString()
 
-  const blobUrl = (key: string): string => `${blobEndpoint}/${options.container}/${encodeURI(key)}`
+  const blobUrl = (key: string): string => `${blobEndpoint}/${options.container}/${encodeBlobPath(key)}`
 
   return {
     id: "azure-storage",

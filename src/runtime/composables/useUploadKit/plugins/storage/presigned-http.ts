@@ -59,10 +59,14 @@ export const PluginPresignedHttp = defineStorageAdapter<PresignedHttpOptions, Pr
       xhr.addEventListener("error", () => reject(new Error("Upload failed due to network error")))
       xhr.addEventListener("abort", () => reject(new Error("Upload was aborted")))
       xhr.open("PUT", url)
-      xhr.setRequestHeader("Content-Type", contentType)
+      let extraHasContentType = false
       if (extraHeaders) {
-        for (const [k, v] of Object.entries(extraHeaders)) xhr.setRequestHeader(k, v)
+        for (const [k, v] of Object.entries(extraHeaders)) {
+          if (k.toLowerCase() === "content-type") extraHasContentType = true
+          xhr.setRequestHeader(k, v)
+        }
       }
+      if (!extraHasContentType) xhr.setRequestHeader("Content-Type", contentType)
       xhr.send(data)
     })
 
