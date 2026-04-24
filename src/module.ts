@@ -1,4 +1,6 @@
-import { defineNuxtModule, addImports, createResolver } from "@nuxt/kit"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
+import { defineNuxtModule, addImports, addServerHandler, addServerImports, createResolver, useLogger } from "@nuxt/kit"
 
 // Export all types from runtime
 export type * from "./runtime/types"
@@ -10,6 +12,13 @@ export interface ModuleOptions {
    * @default true
    */
   autoImport?: boolean
+
+  /**
+   * Mount path for the auto-generated server endpoints.
+   * The catch-all handler is registered at `${handlerRoute}/**`.
+   * @default "/api/_upload"
+   */
+  handlerRoute?: string
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -19,26 +28,27 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: {
     autoImport: true,
+    handlerRoute: "/api/_upload",
   },
-  setup(options, _nuxt) {
+  setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
+    const logger = useLogger("nuxt-upload-kit")
 
     // Configure Vite's dependency optimization
-    _nuxt.options.vite = _nuxt.options.vite ?? {}
-    _nuxt.options.vite.optimizeDeps = _nuxt.options.vite.optimizeDeps ?? {}
+    nuxt.options.vite = nuxt.options.vite ?? {}
+    nuxt.options.vite.optimizeDeps = nuxt.options.vite.optimizeDeps ?? {}
 
     // Exclude FFmpeg packages - they use Web Workers that don't work correctly when pre-bundled
     // @see https://github.com/ffmpegwasm/ffmpeg.wasm/issues/532
-    _nuxt.options.vite.optimizeDeps.exclude = _nuxt.options.vite.optimizeDeps.exclude ?? []
-    _nuxt.options.vite.optimizeDeps.exclude.push("@ffmpeg/ffmpeg", "@ffmpeg/util")
+    nuxt.options.vite.optimizeDeps.exclude = nuxt.options.vite.optimizeDeps.exclude ?? []
+    nuxt.options.vite.optimizeDeps.exclude.push("@ffmpeg/ffmpeg", "@ffmpeg/util")
 
     // Include Node.js polyfills required by Azure SDK (used by Azure DataLake storage plugin)
     // The `events` package uses CommonJS exports that need pre-bundling for browser ESM
-    _nuxt.options.vite.optimizeDeps.include = _nuxt.options.vite.optimizeDeps.include ?? []
-    _nuxt.options.vite.optimizeDeps.include.push("events")
+    nuxt.options.vite.optimizeDeps.include = nuxt.options.vite.optimizeDeps.include ?? []
+    nuxt.options.vite.optimizeDeps.include.push("events")
 
     if (options.autoImport) {
-      // Auto-import useUploadKit composable
       addImports([
         {
           name: "useUploadKit",
@@ -51,7 +61,37 @@ export default defineNuxtModule<ModuleOptions>({
       ])
     }
 
-    // Add #upload-kit alias for types and runtime
-    _nuxt.options.alias["#upload-kit"] = resolver.resolve("./runtime")
+    // Client alias
+    nuxt.options.alias["#upload-kit"] = resolver.resolve("./runtime")
+
+    // Server alias — resolves in Nitro for `import { defineUploadServerConfig } from "#upload-kit/server"`
+    nuxt.options.nitro = nuxt.options.nitro ?? {}
+    nuxt.options.nitro.alias = nuxt.options.nitro.alias ?? {}
+    nuxt.options.nitro.alias["#upload-kit/server"] = resolver.resolve("./runtime/server")
+
+    // Auto-import useServerUpload in Nitro
+    addServerImports([
+      {
+        name: "useServerUpload",
+        from: resolver.resolve("./runtime/server/use-server-upload"),
+      },
+    ])
+
+    // Detect convention file
+    const srcDir = nuxt.options.rootDir
+    const conventionFile = join(srcDir, "server/upload.server.config.ts")
+    if (!existsSync(conventionFile)) {
+      logger.warn(
+        "No server config found at `server/upload.server.config.ts`. Server-side uploads are disabled. " +
+          "Create the file and export `defineUploadServerConfig({ storage, ... })` to enable them.",
+      )
+    }
+
+    // Catch-all stub handler
+    const handlerRoute = options.handlerRoute ?? "/api/_upload"
+    addServerHandler({
+      route: `${handlerRoute}/**`,
+      handler: resolver.resolve("./runtime/server/handler"),
+    })
   },
 })
