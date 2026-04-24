@@ -32,6 +32,14 @@
     "./providers/firebase": {
       "types": "./dist/providers/firebase.d.mts",
       "import": "./dist/providers/firebase.mjs"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.mts",
+      "import": "./dist/server/index.mjs"
+    },
+    "./server/s3": {
+      "types": "./dist/server/s3.d.mts",
+      "import": "./dist/server/s3.mjs"
     }
   },
   "scripts": {
@@ -55,6 +63,7 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "3.1036.0",
     "@aws-sdk/lib-storage": "3.1036.0",
+    "@aws-sdk/s3-request-presigner": "3.1036.0",
     "@azure/storage-file-datalake": "12.29.0",
     "@ffmpeg/ffmpeg": "0.12.15",
     "@ffmpeg/util": "0.12.2",
@@ -71,6 +80,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
     "firebase": "12.12.1",
+    "h3": "1.15.11",
     "happy-dom": "20.9.0",
     "nuxt": "4.4.2",
     "prettier": "3.8.3",
@@ -81,12 +91,20 @@
     "vue-tsc": "3.2.7"
   },
   "peerDependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
     "@azure/storage-file-datalake": "^12.0.0",
     "@ffmpeg/ffmpeg": "^0.12.0",
     "@ffmpeg/util": "^0.12.0",
     "firebase": "^10.0.0 || ^11.0.0 || ^12.0.0"
   },
   "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    },
     "@azure/storage-file-datalake": {
       "optional": true
     },

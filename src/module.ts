@@ -69,15 +69,6 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.alias = nuxt.options.nitro.alias ?? {}
     nuxt.options.nitro.alias["#upload-kit/server"] = resolver.resolve("./runtime/server")
 
-    if (options.autoImport) {
-      addServerImports([
-        {
-          name: "useServerUpload",
-          from: resolver.resolve("./runtime/server/use-server-upload"),
-        },
-      ])
-    }
-
     // Detect convention file
     const conventionFile = join(nuxt.options.serverDir, "upload.server.config.ts")
     if (!existsSync(conventionFile)) {
@@ -88,11 +79,31 @@ export default defineNuxtModule<ModuleOptions>({
       return
     }
 
-    // Catch-all stub handler
+    // Bind the user's convention file so handlers + useServerUpload can import it
+    nuxt.options.nitro.alias["#upload-kit-user-config"] = conventionFile
+
+    if (options.autoImport) {
+      addServerImports([
+        {
+          name: "useServerUpload",
+          from: resolver.resolve("./runtime/server/use-server-upload"),
+        },
+      ])
+    }
+
     const handlerRoute = options.handlerRoute ?? "/api/_upload"
+
+    // Expose to the client default transport so customizing handlerRoute doesn't force every
+    // useUploadKit() call to also pass `endpoint`.
+    nuxt.options.runtimeConfig.public.uploadKit = {
+      ...(nuxt.options.runtimeConfig.public.uploadKit as Record<string, unknown> | undefined),
+      handlerRoute,
+    }
+
     addServerHandler({
-      route: `${handlerRoute}/**`,
-      handler: resolver.resolve("./runtime/server/handler"),
+      route: `${handlerRoute}/presign`,
+      method: "post",
+      handler: resolver.resolve("./runtime/server/handlers/presign"),
     })
   },
 })

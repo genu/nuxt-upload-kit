@@ -15,9 +15,23 @@ import type {
 } from "./types"
 import { ValidatorAllowedFileTypes, ValidatorMaxFileSize, ValidatorMaxFiles } from "./validators"
 import { PluginThumbnailGenerator, PluginImageCompressor } from "./plugins"
+import { PluginPresignedHttp } from "./plugins/storage/presigned-http"
 import { createPluginContext, createFileError, getExtension, setupInitialFiles } from "./utils"
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
+
+import { useRuntimeConfig } from "#imports"
+
+const DEFAULT_ENDPOINT = "/api/_upload"
+
+const resolveDefaultEndpoint = (): string => {
+  try {
+    const cfg = useRuntimeConfig?.()?.public as { uploadKit?: { handlerRoute?: string } } | undefined
+    return cfg?.uploadKit?.handlerRoute || DEFAULT_ENDPOINT
+  } catch {
+    return DEFAULT_ENDPOINT
+  }
+}
 
 const defaultOptions: UploadOptions = {
   storage: undefined,
@@ -52,10 +66,16 @@ export const useUploadKit = <TUploadResult = unknown>(
   let hasEmittedFilesUploaded = false
 
   /**
-   * Get the active storage plugin
+   * Get the active storage plugin. Falls back to the built-in PresignedHttp transport
+   * (which talks to the auto-mounted server endpoints) when none is provided.
    */
+  let defaultTransport: StoragePlugin<TUploadResult, any> | null = null
   const getStoragePlugin = (): StoragePlugin<TUploadResult, any> | null => {
-    return (options.storage as StoragePlugin<TUploadResult, any> | undefined) || null
+    if (options.storage) return options.storage as StoragePlugin<TUploadResult, any>
+    defaultTransport ??= PluginPresignedHttp({
+      endpoint: options.endpoint ?? resolveDefaultEndpoint(),
+    }) as unknown as StoragePlugin<TUploadResult, any>
+    return defaultTransport
   }
 
   const addPlugin = (plugin: UploaderPlugin<any, any>) => {
