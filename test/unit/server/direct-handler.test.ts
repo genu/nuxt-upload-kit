@@ -25,16 +25,21 @@ const callHandler = async () => {
   return mod.default
 }
 
-const fakeEvent = () =>
+const fakeEvent = (headers: Record<string, string> = {}) =>
   ({
-    node: { req: { method: "POST", headers: { "content-type": "multipart/form-data" } } },
+    node: { req: { method: "POST", headers: { "content-type": "multipart/form-data", ...headers } } },
     context: {},
   }) as unknown as Parameters<Awaited<ReturnType<typeof callHandler>>>[0]
 
 const mockMultipart = (parts: Array<{ name: string; filename?: string; type?: string; data: Buffer }>) => {
   vi.doMock("h3", async (importOriginal) => {
     const actual = await importOriginal<typeof import("h3")>()
-    return { ...actual, readMultipartFormData: async () => parts }
+    return {
+      ...actual,
+      readMultipartFormData: async () => parts,
+      getRequestHeader: (event: { node: { req: { headers: Record<string, string> } } }, name: string) =>
+        event.node.req.headers[name.toLowerCase()],
+    }
   })
 }
 
@@ -137,6 +142,28 @@ describe("direct handler", () => {
     mockMultipart([{ name: "file", filename: "f.bin", type: "application/octet-stream", data: Buffer.from("x") }])
     const handler = await callHandler()
     await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 500 })
+  })
+
+  it("rejects with 413 when Content-Length exceeds maxBodySize, before authorize/read", async () => {
+    const storage = stubStorage()
+    const authorize = vi.fn(async () => ({}))
+    userConfig = { storage, authorize, maxBodySize: 100 }
+
+    mockMultipart([{ name: "file", filename: "big.bin", type: "application/octet-stream", data: Buffer.from("x") }])
+    const handler = await callHandler()
+    await expect(handler(fakeEvent({ "content-length": "500" }))).rejects.toMatchObject({ statusCode: 413 })
+    expect(authorize).not.toHaveBeenCalled()
+    expect(storage.put).not.toHaveBeenCalled()
+  })
+
+  it("passes when Content-Length is within maxBodySize", async () => {
+    const storage = stubStorage()
+    userConfig = { storage, maxBodySize: 1000 }
+
+    mockMultipart([{ name: "file", filename: "small.png", type: "image/png", data: Buffer.from("pix") }])
+    const handler = await callHandler()
+    const result = await handler(fakeEvent({ "content-length": "50" }))
+    expect(result.fileId).toMatch(/^uploads\//)
   })
 
   it("falls back to uploads/{fileId} when adapter has no resolveKey", async () => {

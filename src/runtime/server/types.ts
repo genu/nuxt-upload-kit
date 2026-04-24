@@ -72,6 +72,13 @@ export interface UploadServerConfig {
   storage?: StorageAdapter
   authorize?: (event: H3Event, op: AuthorizeOp) => AuthorizeContext | Promise<AuthorizeContext>
   validators?: ServerValidator[]
+  /**
+   * Maximum request body size (in bytes) accepted by the `/direct` upload endpoint.
+   * Enforced against the `Content-Length` header before the body is read into memory,
+   * so authorize/validators never see oversized requests. Rely on an upstream
+   * proxy/CDN request-size cap for chunked transfer encoding, which has no Content-Length.
+   */
+  maxBodySize?: number
   hooks?: {
     beforePresign?: (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
     afterUpload?: (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
