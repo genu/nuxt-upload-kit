@@ -25,7 +25,12 @@ export default defineEventHandler(async (event) => {
   if (!raw) {
     throw createError({ statusCode: 400, statusMessage: "Bad Request", message: "Missing fileId." })
   }
-  const key = decodeURIComponent(raw)
+  let key: string
+  try {
+    key = decodeURIComponent(raw)
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: "Bad Request", message: "Invalid fileId encoding." })
+  }
 
   const auth = config.authorize ? await config.authorize(event, { type: "delete", key }) : {}
   const ctx: ServerHookContext = { event, auth }

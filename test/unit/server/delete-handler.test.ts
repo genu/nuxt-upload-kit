@@ -89,6 +89,14 @@ describe("delete handler", () => {
     expect(storage.delete).not.toHaveBeenCalled()
   })
 
+  it("returns 400 when fileId is malformed URL encoding", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+    const handler = await callHandler()
+    await expect(handler(fakeEvent("%E0%A4%A"))).rejects.toMatchObject({ statusCode: 400 })
+    expect(storage.delete).not.toHaveBeenCalled()
+  })
+
   it("returns 400 when fileId is missing", async () => {
     userConfig = { storage: stubStorage() }
     const handler = await callHandler()

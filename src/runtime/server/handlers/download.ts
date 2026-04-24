@@ -26,7 +26,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Bad Request", message: "Missing fileId." })
   }
   // Clients URL-encode keys that contain "/"; decode back to the raw storage key.
-  const key = decodeURIComponent(raw)
+  let key: string
+  try {
+    key = decodeURIComponent(raw)
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: "Bad Request", message: "Invalid fileId encoding." })
+  }
 
   const auth = config.authorize ? await config.authorize(event, { type: "presign-download", key }) : {}
   const ctx: ServerHookContext = { event, auth }
