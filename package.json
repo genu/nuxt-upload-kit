@@ -40,6 +40,10 @@
     "./server/s3": {
       "types": "./dist/server/s3.d.mts",
       "import": "./dist/server/s3.mjs"
+    },
+    "./server/azure": {
+      "types": "./dist/server/azure.d.mts",
+      "import": "./dist/server/azure.mjs"
     }
   },
   "scripts": {
@@ -64,6 +68,7 @@
     "@aws-sdk/client-s3": "3.1036.0",
     "@aws-sdk/lib-storage": "3.1036.0",
     "@aws-sdk/s3-request-presigner": "3.1036.0",
+    "@azure/storage-blob": "12.29.0",
     "@azure/storage-file-datalake": "12.29.0",
     "@ffmpeg/ffmpeg": "0.12.15",
     "@ffmpeg/util": "0.12.2",
@@ -94,6 +99,7 @@
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/lib-storage": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "@azure/storage-blob": "^12.0.0",
     "@azure/storage-file-datalake": "^12.0.0",
     "@ffmpeg/ffmpeg": "^0.12.0",
     "@ffmpeg/util": "^0.12.0",
@@ -107,6 +113,9 @@
       "optional": true
     },
     "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    },
+    "@azure/storage-blob": {
       "optional": true
     },
     "@azure/storage-file-datalake": {

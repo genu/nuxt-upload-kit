@@ -34,6 +34,8 @@ export interface PresignUploadResult {
   fileId: string
   /** Optional form fields for POST-style presigned uploads (e.g. S3 POST policy). */
   fields?: Record<string, string>
+  /** Extra request headers the client must send with the PUT (e.g. Azure's `x-ms-blob-type: BlockBlob`). */
+  headers?: Record<string, string>
 }
 
 export interface PresignedFileInput extends UploadFileDescriptor {
