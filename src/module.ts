@@ -69,17 +69,17 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.alias = nuxt.options.nitro.alias ?? {}
     nuxt.options.nitro.alias["#upload-kit/server"] = resolver.resolve("./runtime/server")
 
-    // Auto-import useServerUpload in Nitro
-    addServerImports([
-      {
-        name: "useServerUpload",
-        from: resolver.resolve("./runtime/server/use-server-upload"),
-      },
-    ])
+    if (options.autoImport) {
+      addServerImports([
+        {
+          name: "useServerUpload",
+          from: resolver.resolve("./runtime/server/use-server-upload"),
+        },
+      ])
+    }
 
     // Detect convention file
-    const srcDir = nuxt.options.rootDir
-    const conventionFile = join(srcDir, "server/upload.server.config.ts")
+    const conventionFile = join(nuxt.options.serverDir, "upload.server.config.ts")
     if (!existsSync(conventionFile)) {
       logger.warn(
         "No server config found at `server/upload.server.config.ts`. Server-side uploads are disabled. " +
