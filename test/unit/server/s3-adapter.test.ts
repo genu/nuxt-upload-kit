@@ -53,6 +53,16 @@ describe("S3Storage", () => {
     ).rejects.toThrow(/forcePathStyle/)
   })
 
+  it("exposes resolveKey mirroring the keyStrategy", () => {
+    const storage = S3Storage({
+      bucket: "b",
+      region: "us-east-1",
+      credentials: { accessKeyId: "x", secretAccessKey: "y" },
+      keyStrategy: ({ fileId }) => `tenant-7/${fileId}`,
+    })
+    expect(storage.resolveKey?.({ fileId: "abc", name: "abc", size: 1, mimeType: "text/plain" })).toBe("tenant-7/abc")
+  })
+
   it("uses path-style URLs for S3-compatible endpoints", async () => {
     const storage = S3Storage({
       bucket: "minio-bucket",

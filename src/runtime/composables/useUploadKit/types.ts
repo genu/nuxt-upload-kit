@@ -210,11 +210,13 @@ export type UploadFile<TUploadResult = unknown> = LocalUploadFile<TUploadResult>
 export interface UploadOptions {
   /**
    * Transport mode. Defaults to "presigned": the client requests a signed URL from the
-   * configured server endpoint, then PUTs the file directly to cloud storage. Server
-   * forwarding (`mode: "server"`) lands in a follow-up.
+   * configured server endpoint, then PUTs the file directly to cloud storage.
+   * `"server"` streams the file through the Nitro server, which forwards to storage using
+   * the configured adapter — use when credentials must stay server-side or server-side
+   * validation/transforms must run before storage.
    * @default "presigned"
    */
-  mode?: "presigned"
+  mode?: "presigned" | "server"
 
   /**
    * Override the auto-mounted upload endpoint path. Defaults to the module's `handlerRoute`

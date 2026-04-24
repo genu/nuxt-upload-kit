@@ -107,6 +107,12 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     addServerHandler({
+      route: `${handlerRoute}/direct`,
+      method: "post",
+      handler: resolver.resolve("./runtime/server/handlers/direct"),
+    })
+
+    addServerHandler({
       route: `${handlerRoute}/download/:fileId`,
       method: "get",
       handler: resolver.resolve("./runtime/server/handlers/download"),
