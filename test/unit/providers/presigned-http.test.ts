@@ -20,9 +20,11 @@ describe("PluginPresignedHttp", () => {
     const adapter = PluginPresignedHttp({ endpoint: "/api/_upload", retries: 2 })
     const blob = new Blob(["x"], { type: "image/jpeg" })
 
-    const promise = adapter.upload(blob, "f.jpg", { contentType: "image/jpeg" })
+    // Attach the rejection handler synchronously before the timers flush, so vitest
+    // doesn't observe an unhandled rejection while the retry loop runs.
+    const assertion = expect(adapter.upload(blob, "f.jpg", { contentType: "image/jpeg" })).rejects.toThrow(/503/)
     await vi.runAllTimersAsync()
-    await expect(promise).rejects.toThrow(/503/)
+    await assertion
     expect(fetchMock).toHaveBeenCalledTimes(3) // initial + 2 retries
   })
 
@@ -33,9 +35,9 @@ describe("PluginPresignedHttp", () => {
     const adapter = PluginPresignedHttp({ endpoint: "/api/_upload", retries: 5 })
     const blob = new Blob(["x"], { type: "image/jpeg" })
 
-    const promise = adapter.upload(blob, "f.jpg", { contentType: "image/jpeg" })
+    const assertion = expect(adapter.upload(blob, "f.jpg", { contentType: "image/jpeg" })).rejects.toThrow(/413/)
     await vi.runAllTimersAsync()
-    await expect(promise).rejects.toThrow(/413/)
+    await assertion
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
