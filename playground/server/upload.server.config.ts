@@ -1,6 +1,9 @@
-import { defineUploadServerConfig, MaxFileSize, AllowedMimeTypes } from "#upload-kit/server"
+import { defineUploadServerConfig } from "#upload-kit/server"
 import { S3Storage } from "nuxt-upload-kit/server/s3"
 // Also available: AzureStorage from "nuxt-upload-kit/server/azure", FirebaseStorage from "nuxt-upload-kit/server/firebase"
+
+// Restrictions (size, MIME types, etc.) live in nuxt.config.ts > uploadKit.restrictions
+// and are enforced identically client-side and server-side.
 
 const env = process.env
 
@@ -15,8 +18,6 @@ export default defineUploadServerConfig({
         ? { accessKeyId: env.AWS_ACCESS_KEY_ID, secretAccessKey: env.AWS_SECRET_ACCESS_KEY }
         : undefined,
   }),
-
-  validators: [MaxFileSize(10 * 1024 * 1024), AllowedMimeTypes(["image/*", "video/*"])],
 
   authorize: async () => {
     return { userId: "playground" }

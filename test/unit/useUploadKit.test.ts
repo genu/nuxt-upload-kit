@@ -48,9 +48,11 @@ describe("useUploadKit", () => {
 
     it("should initialize with custom options", () => {
       const uploader = useUploadKit({
-        maxFiles: 5,
-        maxFileSize: 1024 * 1024,
-        allowedFileTypes: ["image/jpeg", "image/png"],
+        restrictions: {
+          maxFiles: 5,
+          maxFileSize: 1024 * 1024,
+          allowedMimeTypes: ["image/jpeg", "image/png"],
+        },
         autoUpload: true,
       })
 
@@ -228,7 +230,7 @@ describe("useUploadKit", () => {
 
     it("should continue adding files even if some fail validation", async () => {
       const uploader = useUploadKit({
-        maxFileSize: 500,
+        restrictions: { maxFileSize: 500 },
       })
 
       const files = [
@@ -1156,7 +1158,7 @@ describe("useUploadKit", () => {
 
     it("should respect maxFiles limit and preserve insertion order", async () => {
       const storage = createMockStoragePlugin({ getRemoteFileFn: defaultGetRemoteFileFn })
-      const uploader = useUploadKit({ storage, maxFiles: 3 })
+      const uploader = useUploadKit({ storage, restrictions: { maxFiles: 3 } })
 
       await uploader.addFile(createMockFile("file1.jpg"))
       await uploader.addFile(createMockFile("file2.jpg"))
@@ -1176,7 +1178,7 @@ describe("useUploadKit", () => {
     it("should return empty array when maxFiles is already reached", async () => {
       const getRemoteFileFn = vi.fn(defaultGetRemoteFileFn)
       const storage = createMockStoragePlugin({ getRemoteFileFn })
-      const uploader = useUploadKit({ storage, maxFiles: 1 })
+      const uploader = useUploadKit({ storage, restrictions: { maxFiles: 1 } })
 
       await uploader.addFile(createMockFile("file1.jpg"))
       getRemoteFileFn.mockClear()

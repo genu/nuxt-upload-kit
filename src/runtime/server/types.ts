@@ -63,14 +63,28 @@ export interface StorageAdapter {
 }
 
 /**
- * Server-side validator. Throws to reject; returning normally accepts.
- * Use `createError({ statusCode: 4xx, message })` to control the HTTP response.
+ * Custom server-side validator. Runs after `authorize` and after the declarative
+ * restrictions from `nuxt.config.ts > uploadKit.restrictions` have been enforced.
+ *
+ * Throw `createError({ statusCode, message })` to reject. Use this for checks that
+ * can't be expressed declaratively — DB quotas, magic-byte content sniffing,
+ * external API calls. For static rules (size, MIME), use `restrictions` instead.
  */
 export type ServerValidator = (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
 
 export interface UploadServerConfig {
   storage?: StorageAdapter
   authorize?: (event: H3Event, op: AuthorizeOp) => AuthorizeContext | Promise<AuthorizeContext>
+  /**
+   * Pin the upload mode when the storage adapter supports both "presigned" and "server".
+   * If unset, the first supported mode is used (presigned takes priority when available).
+   */
+  mode?: "presigned" | "server"
+  /**
+   * Custom server-side validators. Run after `authorize` and after declarative
+   * restrictions have passed. Use for stateful or imperative checks (DB quotas,
+   * magic-byte sniffing, external lookups) that can't be expressed as `restrictions`.
+   */
   validators?: ServerValidator[]
   /**
    * Maximum request body size (in bytes) accepted by the `/direct` upload endpoint.

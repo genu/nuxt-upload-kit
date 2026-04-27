@@ -37,7 +37,58 @@ beforeEach(() => {
 })
 
 describe("presign handler", () => {
-  it("authorizes, validates, runs the hook, then presigns", async () => {
+  it("authorizes, runs the hook, then presigns", async () => {
+    const order: string[] = []
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: vi.fn(async () => {
+        order.push("authorize")
+        return { userId: "u1" }
+      }),
+      hooks: {
+        beforePresign: vi.fn(async () => {
+          order.push("beforePresign")
+        }),
+      },
+    }
+    storage.presignUpload.mockImplementation(async (input) => {
+      order.push("presign")
+      return { uploadUrl: "https://u/", publicUrl: "https://p/", fileId: input.fileId }
+    })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 100, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    await handler(fakeEvent({ file: { name: "a.png", size: 100, mimeType: "image/png" } }))
+
+    expect(order).toEqual(["authorize", "beforePresign", "presign"])
+    vi.doUnmock("h3")
+  })
+
+  it("rejects with 413 when file exceeds shared maxFileSize restriction", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFileSize: 100 } } })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 9999, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 413 })
+    expect(storage.presignUpload).not.toHaveBeenCalled()
+    vi.doUnmock("h3")
+    __setRuntimeConfig({})
+  })
+
+  it("runs validators after authorize and before hooks.beforePresign", async () => {
     const order: string[] = []
     const storage = stubStorage()
     userConfig = {
@@ -62,14 +113,13 @@ describe("presign handler", () => {
       return { uploadUrl: "https://u/", publicUrl: "https://p/", fileId: input.fileId }
     })
 
-    // Use h3's eventHandler stub: pass body via readBody mock
     vi.doMock("h3", async (importOriginal) => {
       const actual = await importOriginal<typeof import("h3")>()
       return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 100, mimeType: "image/png" } }) }
     })
 
     const handler = await callHandler()
-    await handler(fakeEvent({ file: { name: "a.png", size: 100, mimeType: "image/png" } }))
+    await handler(fakeEvent({}))
 
     expect(order).toEqual(["authorize", "validate", "beforePresign", "presign"])
     vi.doUnmock("h3")
@@ -81,20 +131,39 @@ describe("presign handler", () => {
       storage,
       validators: [
         () => {
-          throw createError({ statusCode: 413, message: "too big" })
+          throw createError({ statusCode: 409, message: "quota exceeded" })
         },
       ],
     }
 
     vi.doMock("h3", async (importOriginal) => {
       const actual = await importOriginal<typeof import("h3")>()
-      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 9999, mimeType: "image/png" } }) }
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 1, mimeType: "image/png" } }) }
     })
 
     const handler = await callHandler()
-    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 413 })
+    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 409 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
     vi.doUnmock("h3")
+  })
+
+  it("rejects with 415 when MIME is not allowed", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { allowedMimeTypes: ["image/*"] } } })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.pdf", size: 100, mimeType: "application/pdf" } }) }
+    })
+
+    const handler = await callHandler()
+    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 415 })
+    expect(storage.presignUpload).not.toHaveBeenCalled()
+    vi.doUnmock("h3")
+    __setRuntimeConfig({})
   })
 
   it("propagates authorize errors before presigning", async () => {

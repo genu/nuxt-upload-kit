@@ -1,4 +1,5 @@
 // Re-export all types from composables
 export * from "../composables/useUploadKit/types"
 export * from "../composables/useUploadKit/plugins"
-export * from "../composables/useUploadKit/validators"
+export type { Restrictions, RestrictionCode, RuleViolation, FileDescriptor } from "../shared"
+export { RestrictionError } from "../shared"

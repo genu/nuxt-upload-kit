@@ -1,5 +1,8 @@
 import type { Emitter } from "mitt"
 import type { MaybeRef } from "vue"
+import type { Restrictions } from "../../shared"
+
+export type { Restrictions } from "../../shared"
 
 /**
  * PUBLIC API - Types users commonly need
@@ -209,70 +212,48 @@ export type UploadFile<TUploadResult = unknown> = LocalUploadFile<TUploadResult>
 // Configuration
 export interface UploadOptions {
   /**
-   * Transport mode. Defaults to "presigned": the client requests a signed URL from the
-   * configured server endpoint, then PUTs the file directly to cloud storage.
-   * `"server"` streams the file through the Nitro server, which forwards to storage using
-   * the configured adapter — use when credentials must stay server-side or server-side
-   * validation/transforms must run before storage.
-   * @default "presigned"
-   */
-  mode?: "presigned" | "server"
-
-  /**
    * Override the auto-mounted upload endpoint path. Defaults to the module's `handlerRoute`
    * (configured in `nuxt.config.ts > uploadKit.handlerRoute`, default `/api/_upload`).
    */
   endpoint?: string
 
   /**
-   * Low-level escape hatch: pass a storage plugin object directly. Bypasses `mode`/`endpoint`
-   * and the server-side config. Use only when uploading direct browser-to-cloud with
-   * caller-managed credentials (e.g. legacy Azure SAS flows).
+   * Low-level escape hatch: pass a storage plugin object directly. Bypasses the configured
+   * server endpoints. Use only when uploading direct browser-to-cloud with caller-managed
+   * credentials (e.g. legacy Azure SAS flows).
    */
   storage?: StoragePlugin<any, any>
 
   /**
-   * Processing and validation plugins (validators, compressors, etc.)
+   * Processing plugins (compressors, thumbnail generators, custom validators).
    *
    * These plugins run during the file lifecycle:
-   * - validate: Check file before adding
+   * - validate: Custom validation beyond the shared restrictions
    * - preprocess: Generate thumbnails/previews immediately
    * - process: Compress/transform before upload
    * - complete: Post-upload processing
    *
    * @example
    * ```typescript
-   * plugins: [
-   *   ValidatorMaxFiles({ maxFiles: 10 }),
-   *   PluginImageCompressor({ quality: 0.8 })
-   * ]
+   * plugins: [PluginImageCompressor({ quality: 0.8 })]
    * ```
    */
   plugins?: ProcessingPlugin<any, any>[]
 
   /**
-   * Validate maximum number of files
-   * - false: disabled
-   * - number: enabled with limit
-   * @default false
+   * Override the shared upload restrictions for this surface. The base restrictions
+   * are configured in `nuxt.config.ts > uploadKit.restrictions` and apply to every
+   * `useUploadKit()` call; the values you set here replace matching fields for this
+   * instance only. Other fields fall through to the shared defaults.
+   *
+   * @example
+   * ```typescript
+   * useUploadKit({
+   *   restrictions: { maxFileSize: 500_000, maxFiles: 1, allowedMimeTypes: ["image/*"] },
+   * })
+   * ```
    */
-  maxFiles?: false | number
-
-  /**
-   * Validate maximum file size in bytes
-   * - false: disabled
-   * - number: enabled with limit
-   * @default false
-   */
-  maxFileSize?: false | number
-
-  /**
-   * Validate allowed file MIME types
-   * - false: disabled
-   * - string[]: enabled with allowed types
-   * @default false
-   */
-  allowedFileTypes?: false | string[]
+  restrictions?: Restrictions
 
   /**
    * Generate thumbnail previews for images/videos
@@ -562,16 +543,20 @@ export interface Plugin<TUploadResult = unknown, TPluginEvents extends Record<st
 }
 
 /**
- * Define a processing plugin (validators, compressors, thumbnail generators)
+ * Define a processing plugin (compressors, thumbnail generators, custom rules).
  *
- * @example Validator
+ * Common static rules (size, MIME type, count) belong in `nuxt.config.ts > uploadKit.restrictions`.
+ * Use a processing plugin for behavior that can't be expressed declaratively — async checks,
+ * stateful rules, content inspection, derivative generation.
+ *
+ * @example Custom validator
  * ```typescript
- * export const ValidatorMaxFiles = defineProcessingPlugin<ValidatorOptions>((options) => ({
- *   id: 'validator-max-files',
+ * export const ValidatorDuplicateName = defineProcessingPlugin((_options) => ({
+ *   id: 'validator-duplicate-name',
  *   hooks: {
  *     validate: async (file, context) => {
- *       if (context.files.length >= options.maxFiles) {
- *         throw { message: 'Too many files' }
+ *       if (context.files.some((f) => f.name === file.name)) {
+ *         throw { message: `A file named "${file.name}" is already in the queue.` }
  *       }
  *       return file
  *     }
@@ -620,69 +605,6 @@ export function defineStorageAdapter<
 >(
   factory: (options: TPluginOptions) => StoragePlugin<TUploadResult, TPluginEvents>,
 ): (options: TPluginOptions) => StoragePlugin<TUploadResult, TPluginEvents> {
-  return factory
-}
-
-/**
- * @deprecated Use `defineStorageAdapter` instead
- */
-export const defineStoragePlugin = defineStorageAdapter
-
-/**
- * Define an uploader plugin with type safety, context access, and custom events.
- * This is the universal plugin factory for all plugin types (storage, validators, processors).
- *
- * @deprecated Use defineProcessingPlugin or defineStoragePlugin instead for better type safety
- *
- * Hooks receive context as a parameter, making it clear when context is available.
- * Context includes current files, options, and an emit function for custom events.
- *
- * @example Basic Plugin
- * ```typescript
- * export const ValidatorMaxFiles = defineUploaderPlugin<ValidatorOptions>((options) => ({
- *   id: 'validator-max-files',
- *   hooks: {
- *     validate: async (file, context) => {
- *       if (context.files.length >= options.maxFiles) {
- *         throw { message: 'Too many files' }
- *       }
- *       return file
- *     }
- *   }
- * }))
- * ```
- *
- * @example Plugin with Custom Events
- * ```typescript
- * type CompressionEvents = {
- *   start: { file: UploadFile; originalSize: number }
- *   complete: { file: UploadFile; savedBytes: number }
- * }
- *
- * export const PluginImageCompressor = defineUploaderPlugin<
- *   ImageCompressorOptions,
- *   CompressionEvents
- * >((options) => ({
- *   id: 'image-compressor',
- *   hooks: {
- *     process: async (file, context) => {
- *       context.emit('start', { file, originalSize: file.size })
- *       // ... compression logic ...
- *       context.emit('complete', { file, savedBytes: 1000 })
- *       return file
- *     }
- *   }
- * }))
- *
- * // Usage - events are automatically prefixed with plugin ID
- * uploader.on('image-compressor:complete', ({ file, savedBytes }) => {
- *   console.log(`Saved ${savedBytes} bytes`)
- * })
- * ```
- */
-export function defineUploaderPlugin<TPluginOptions = unknown, TPluginEvents extends Record<string, any> = Record<string, never>>(
-  factory: (options: TPluginOptions) => Plugin<any, TPluginEvents>,
-): (options: TPluginOptions) => Plugin<any, TPluginEvents> {
   return factory
 }
 

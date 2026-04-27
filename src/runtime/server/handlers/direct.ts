@@ -2,32 +2,14 @@ import { defineEventHandler, readMultipartFormData, createError, getRequestHeade
 // @ts-expect-error virtual user-config import
 import userConfig from "#upload-kit-user-config"
 import type { UploadServerConfig, UploadFileDescriptor, ServerHookContext } from "../types"
+import { enforceRestrictions } from "../restrictions"
+import { generateFileId, getRestrictions, requireStorage, requireStorageMethod } from "../utils"
 
 const config = userConfig as UploadServerConfig
 
-const generateFileId = (file: UploadFileDescriptor): string => {
-  const ts = Date.now()
-  const rand = Math.random().toString(36).slice(2, 10)
-  const dot = file.name.lastIndexOf(".")
-  const ext = dot > 0 ? file.name.slice(dot) : ""
-  return `${ts}-${rand}${ext}`
-}
-
 export default defineEventHandler(async (event) => {
-  if (!config.storage) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: "Server Misconfigured",
-      message: "No storage adapter configured. Set `storage` in your upload.server.config.ts.",
-    })
-  }
-  if (!config.storage.put) {
-    throw createError({
-      statusCode: 501,
-      statusMessage: "Not Implemented",
-      message: `Storage adapter "${config.storage.id}" does not implement put().`,
-    })
-  }
+  const storage = requireStorage(config)
+  const put = requireStorageMethod(storage, "put")
 
   if (config.maxBodySize != null) {
     const contentLength = Number(getRequestHeader(event, "content-length"))
@@ -56,19 +38,19 @@ export default defineEventHandler(async (event) => {
     mimeType: filePart.type || "application/octet-stream",
   }
 
+  enforceRestrictions(file, getRestrictions())
+
   const auth = config.authorize ? await config.authorize(event, { type: "direct-upload", file }) : {}
   const ctx: ServerHookContext = { event, auth }
 
   if (config.validators) {
-    for (const validate of config.validators) {
-      await validate(file, ctx)
-    }
+    for (const validate of config.validators) await validate(file, ctx)
   }
 
   const fileId = generateFileId(file)
-  const key = config.storage.resolveKey?.({ ...file, fileId }) ?? `uploads/${fileId}`
+  const key = storage.resolveKey?.({ ...file, fileId }) ?? `uploads/${fileId}`
 
-  const result = await config.storage.put({ key, body: filePart.data, contentType: file.mimeType }, ctx)
+  const result = await put({ key, body: filePart.data, contentType: file.mimeType }, ctx)
 
   await config.hooks?.afterUpload?.(file, ctx)
 

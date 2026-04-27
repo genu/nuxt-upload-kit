@@ -35,11 +35,20 @@ src/
 ├── module.ts                    # Nuxt module entry point
 └── runtime/
     ├── types/index.ts           # All exported types
+    ├── shared/                  # Isomorphic core (rules, restrictions, errors)
+    │   ├── rules/               # Pure rule functions (max-file-size, allowed-mime-types, etc.)
+    │   ├── restrictions.ts      # Public Restrictions type
+    │   └── error.ts             # RestrictionError class
+    ├── server/
+    │   ├── handlers/            # /presign, /direct, /download, /delete
+    │   ├── plugins/bootstrap.ts # Resolves mode + capabilities at server startup
+    │   ├── adapters/            # S3, Azure, Firebase storage adapters
+    │   ├── capabilities.ts      # deriveCapabilities, resolveMode helpers
+    │   └── restrictions.ts      # enforceRestrictions (h3 status mapping)
     └── composables/
-        ├── useUploadKit/    # Main composable
+        ├── useUploadKit/        # Main composable
         │   ├── index.ts         # Core upload manager logic
         │   ├── types.ts         # Type definitions
-        │   ├── validators/      # Validation plugins (max-files, file-types, etc.)
         │   └── plugins/         # Processing plugins
         │       ├── thumbnail-generator.ts
         │       ├── image-compressor.ts
@@ -51,9 +60,9 @@ src/
 
 **Key Concepts:**
 
-- **Storage Plugins**: Handle file persistence (Azure Data Lake implemented)
-- **Processing Plugins**: Transform files (thumbnails, compression)
-- **Validator Plugins**: Validate files before adding (type, size, count)
+- **Restrictions**: Declarative, JSON-serializable rules (`maxFileSize`, `allowedMimeTypes`, etc.) configured in `nuxt.config.ts > uploadKit.restrictions`. The shared rule core in `runtime/shared/` enforces them identically on the client (composable) and server (h3 handlers).
+- **Storage Adapters**: Server-side cloud SDK wrappers (S3, Azure, Firebase). Mode (`presigned` vs `server`) is derived from which methods the adapter implements.
+- **Processing Plugins**: Transform files (thumbnails, compression) or implement custom rules that don't fit `Restrictions` (async checks, content inspection).
 - **Event System**: Uses `mitt` with `subject:action` naming (e.g., `file:added`, `upload:complete`)
 
 ## Code Style
@@ -66,14 +75,16 @@ src/
 
 ## Creating New Plugins
 
-**Validator Plugin Pattern:**
+For common static rules (size, MIME types, count) — extend `Restrictions` in `src/runtime/shared/restrictions.ts` and add a corresponding rule in `src/runtime/shared/rules/`. Both runtimes pick it up automatically.
+
+**Custom Validator Plugin Pattern** (for rules that can't be expressed declaratively — async checks, stateful rules, content inspection):
 
 ```typescript
 export const ValidatorExample = defineProcessingPlugin<{ option: string }>((options) => ({
   id: "validator-example",
   hooks: {
     validate: async (file, context) => {
-      // Return file to pass, throw to reject
+      // Return file to pass, throw { message } to reject
       return file
     },
   },

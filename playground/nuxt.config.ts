@@ -3,6 +3,10 @@ export default defineNuxtConfig({
 
   uploadKit: {
     autoImport: true,
+    restrictions: {
+      maxFileSize: 10 * 1024 * 1024,
+      allowedMimeTypes: ["image/*", "video/*"],
+    },
   },
 
   devtools: { enabled: true },
