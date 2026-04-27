@@ -38,10 +38,11 @@ export default defineEventHandler(async (event) => {
     mimeType: filePart.type || "application/octet-stream",
   }
 
-  enforceRestrictions(file, getRestrictions())
-
   const auth = config.authorize ? await config.authorize(event, { type: "direct-upload", file }) : {}
   const ctx: ServerHookContext = { event, auth }
+
+  const state = config.getExistingState ? await config.getExistingState(ctx) : undefined
+  enforceRestrictions(file, getRestrictions(), state)
 
   if (config.validators) {
     for (const validate of config.validators) await validate(file, ctx)

@@ -179,6 +179,53 @@ describe("direct handler", () => {
     expect(result.fileId).toMatch(/^uploads\//)
   })
 
+  it("enforces maxFiles using getExistingState (409)", async () => {
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: async () => ({ userId: "u1" }),
+      getExistingState: async () => ({ count: 10, totalSize: 0 }),
+    }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFiles: 10 } } })
+
+    mockMultipart([{ name: "file", filename: "a.png", type: "image/png", data: Buffer.from("pix") }])
+    const handler = await callHandler()
+    await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 409 })
+    expect(storage.put).not.toHaveBeenCalled()
+  })
+
+  it("enforces maxTotalSize using getExistingState (413)", async () => {
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: async () => ({ userId: "u1" }),
+      getExistingState: async () => ({ count: 0, totalSize: 900 }),
+    }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxTotalSize: 1000 } } })
+
+    mockMultipart([{ name: "file", filename: "a.png", type: "image/png", data: Buffer.alloc(200) }])
+    const handler = await callHandler()
+    await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 413 })
+    expect(storage.put).not.toHaveBeenCalled()
+  })
+
+  it("skips aggregate rules when getExistingState is not provided", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFiles: 1, maxTotalSize: 10 } } })
+
+    mockMultipart([{ name: "file", filename: "a.png", type: "image/png", data: Buffer.from("pix") }])
+    const handler = await callHandler()
+    const result = await handler(fakeEvent())
+    expect(result.fileId).toMatch(/^uploads\//)
+  })
+
   it("falls back to uploads/{fileId} when adapter has no resolveKey", async () => {
     const storage: StorageAdapter & { put: ReturnType<typeof vi.fn> } = {
       id: "stub",
