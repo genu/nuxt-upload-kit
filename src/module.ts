@@ -1,6 +1,15 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { defineNuxtModule, addImports, addServerHandler, addServerImports, createResolver, useLogger } from "@nuxt/kit"
+import {
+  defineNuxtModule,
+  addImports,
+  addServerHandler,
+  addServerImports,
+  addServerPlugin,
+  createResolver,
+  useLogger,
+} from "@nuxt/kit"
+import type { Restrictions } from "./runtime/shared"
 
 // Export all types from runtime
 export type * from "./runtime/types"
@@ -19,6 +28,24 @@ export interface ModuleOptions {
    * @default "/api/_upload"
    */
   handlerRoute?: string
+
+  /**
+   * Shared upload restrictions, enforced identically on the client and the server.
+   * Set here once; both the `useUploadKit` composable and the auto-mounted server
+   * handlers consume them via `runtimeConfig.public.uploadKit.restrictions`.
+   *
+   * @example
+   * ```ts
+   * uploadKit: {
+   *   restrictions: {
+   *     maxFileSize: 5_000_000,
+   *     maxFiles: 10,
+   *     allowedMimeTypes: ["image/*", "video/*"],
+   *   },
+   * }
+   * ```
+   */
+  restrictions?: Restrictions
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -29,6 +56,7 @@ export default defineNuxtModule<ModuleOptions>({
   defaults: {
     autoImport: true,
     handlerRoute: "/api/_upload",
+    restrictions: {},
   },
   setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
@@ -92,13 +120,22 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     const handlerRoute = options.handlerRoute ?? "/api/_upload"
+    if (!handlerRoute.startsWith("/") || handlerRoute.endsWith("/") || handlerRoute.includes(":") || handlerRoute.includes("*")) {
+      throw new Error(
+        `[nuxt-upload-kit] Invalid \`handlerRoute\`: "${handlerRoute}". Must start with "/", not end with "/", and contain no ":" or "*" segments.`,
+      )
+    }
 
-    // Expose to the client default transport so customizing handlerRoute doesn't force every
-    // useUploadKit() call to also pass `endpoint`.
+    // Expose shared config to both runtimes via runtimeConfig.public. The Nitro bootstrap
+    // plugin (below) augments this at server startup with the resolved upload mode +
+    // adapter capabilities, derived from the user's storage adapter.
     nuxt.options.runtimeConfig.public.uploadKit = {
       ...(nuxt.options.runtimeConfig.public.uploadKit as Record<string, unknown> | undefined),
       handlerRoute,
+      restrictions: options.restrictions ?? {},
     }
+
+    addServerPlugin(resolver.resolve("./runtime/server/plugins/bootstrap"))
 
     addServerHandler({
       route: `${handlerRoute}/presign`,

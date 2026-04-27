@@ -50,32 +50,27 @@ const postMultipartWithProgress = (
 export const PluginServerUpload = defineStorageAdapter<ServerUploadOptions, ServerUploadResult>((options) => {
   const directEndpoint = `${options.endpoint.replace(/\/+$/, "")}/direct`
 
+  const upload = async (data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) => {
+    const contentType = uploadOptions?.contentType || "application/octet-stream"
+    const { publicUrl, fileId } = await postMultipartWithProgress(
+      directEndpoint,
+      data,
+      storageKey,
+      contentType,
+      uploadOptions?.onProgress || (() => {}),
+    )
+    return { url: publicUrl, storageKey: fileId }
+  }
+
   return {
     id: "server-upload",
-    async upload(data: Blob | File, storageKey: string, uploadOptions?: StandaloneUploadOptions) {
-      const contentType = uploadOptions?.contentType || "application/octet-stream"
-      const { publicUrl, fileId } = await postMultipartWithProgress(
-        directEndpoint,
-        data,
-        storageKey,
-        contentType,
-        uploadOptions?.onProgress || (() => {}),
-      )
-      return { url: publicUrl, storageKey: fileId }
-    },
+    upload,
     hooks: {
       async upload(file, context) {
         if (file.source !== "local" || file.data === null) {
           throw new Error("Cannot upload remote file - no local data available")
         }
-        const { publicUrl, fileId } = await postMultipartWithProgress(
-          directEndpoint,
-          file.data,
-          file.name,
-          file.mimeType,
-          context.onProgress,
-        )
-        return { url: publicUrl, storageKey: fileId }
+        return upload(file.data, file.name, { contentType: file.mimeType, onProgress: context.onProgress })
       },
     },
   }

@@ -136,10 +136,16 @@ Get up and running with just a few lines of code. The `useUploadKit` composable 
 
 ```vue
 <script setup lang="ts">
+// File rules live in nuxt.config.ts:
+//   uploadKit: {
+//     restrictions: {
+//       maxFiles: 10,
+//       maxFileSize: 50 * 1024 * 1024,
+//       allowedMimeTypes: ["image/*", "video/*"],
+//     },
+//   }
+
 const uploader = useUploadKit({
-  maxFiles: 10,
-  maxFileSize: 50 * 1024 * 1024,
-  allowedFileTypes: ["image/*", "video/*"],
   thumbnails: true,
   imageCompression: { quality: 0.85 },
 })

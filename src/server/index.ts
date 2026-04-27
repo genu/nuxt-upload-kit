@@ -1,16 +1,19 @@
 /**
  * Public server entry — for use in Nitro (~~/server/upload.server.config.ts).
  *
+ * Restrictions (max size, allowed MIME types, etc.) live in `nuxt.config.ts > uploadKit.restrictions`
+ * and are enforced identically client-side and server-side.
+ *
  * @example
  * ```typescript
- * import { defineUploadServerConfig, MaxFileSize, AllowedMimeTypes } from "nuxt-upload-kit/server"
+ * import { defineUploadServerConfig } from "nuxt-upload-kit/server"
  * import { S3Storage } from "nuxt-upload-kit/server/s3"
  *
  * export default defineUploadServerConfig({
  *   storage: S3Storage({ bucket: "...", region: "..." }),
- *   validators: [MaxFileSize(10_000_000), AllowedMimeTypes(["image/*"])],
+ *   authorize: async (event) => ({ userId: "..." }),
  * })
  * ```
  */
-export { defineUploadServerConfig, MaxFileSize, AllowedMimeTypes } from "../runtime/server"
+export { defineUploadServerConfig } from "../runtime/server"
 export type * from "../runtime/server/types"

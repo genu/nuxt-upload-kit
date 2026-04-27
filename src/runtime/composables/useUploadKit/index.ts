@@ -13,33 +13,36 @@ import type {
   StoragePlugin,
   InitialFileInput,
 } from "./types"
-import { ValidatorAllowedFileTypes, ValidatorMaxFileSize, ValidatorMaxFiles } from "./validators"
 import { PluginThumbnailGenerator, PluginImageCompressor } from "./plugins"
 import { PluginPresignedHttp } from "./plugins/storage/presigned-http"
 import { PluginServerUpload } from "./plugins/storage/server-upload"
 import { createPluginContext, createFileError, getExtension, setupInitialFiles } from "./utils"
 import { createPluginRunner } from "./plugin-runner"
 import { createFileOperations } from "./file-operations"
+import { applyRestrictions, type Restrictions } from "../../shared"
 
 import { useRuntimeConfig } from "#imports"
 
 const DEFAULT_ENDPOINT = "/api/_upload"
 
-const resolveDefaultEndpoint = (): string => {
+interface UploadKitRuntimeConfig {
+  handlerRoute?: string
+  mode?: "presigned" | "server"
+  restrictions?: Restrictions
+}
+
+const readRuntimeConfig = (): UploadKitRuntimeConfig => {
   try {
-    const cfg = useRuntimeConfig?.()?.public as { uploadKit?: { handlerRoute?: string } } | undefined
-    return cfg?.uploadKit?.handlerRoute || DEFAULT_ENDPOINT
+    const cfg = useRuntimeConfig?.()?.public as { uploadKit?: UploadKitRuntimeConfig } | undefined
+    return cfg?.uploadKit ?? {}
   } catch {
-    return DEFAULT_ENDPOINT
+    return {}
   }
 }
 
 const defaultOptions: UploadOptions = {
   storage: undefined,
   plugins: [],
-  maxFileSize: false,
-  allowedFileTypes: false,
-  maxFiles: false,
   thumbnails: false,
   imageCompression: false,
   autoUpload: false,
@@ -49,6 +52,8 @@ export const useUploadKit = <TUploadResult = unknown>(
   _options: Omit<UploadOptions, "storage"> & { storage?: StoragePlugin<TUploadResult, any> } = {},
 ) => {
   const options = { ...defaultOptions, ..._options } as UploadOptions
+  const runtime = readRuntimeConfig()
+  const restrictions: Restrictions = { ...(runtime.restrictions ?? {}), ...(options.restrictions ?? {}) }
   const files = ref<UploadFile<TUploadResult>[]>([]) as Ref<UploadFile<TUploadResult>[]>
   const emitter: UploaderEmitter<TUploadResult> = mitt()
   const status = ref<UploadStatus>("waiting")
@@ -74,8 +79,8 @@ export const useUploadKit = <TUploadResult = unknown>(
   const getStoragePlugin = (): StoragePlugin<TUploadResult, any> | null => {
     if (options.storage) return options.storage as StoragePlugin<TUploadResult, any>
     if (!defaultTransport) {
-      const endpoint = options.endpoint ?? resolveDefaultEndpoint()
-      const factory = options.mode === "server" ? PluginServerUpload : PluginPresignedHttp
+      const endpoint = options.endpoint ?? runtime.handlerRoute ?? DEFAULT_ENDPOINT
+      const factory = runtime.mode === "server" ? PluginServerUpload : PluginPresignedHttp
       defaultTransport = factory({ endpoint }) as unknown as StoragePlugin<TUploadResult, any>
     }
     return defaultTransport
@@ -87,19 +92,6 @@ export const useUploadKit = <TUploadResult = unknown>(
     } else {
       options.plugins = [plugin as ProcessingPlugin<any, any>]
     }
-  }
-
-  // Add built-in plugins based on options
-  if (options.maxFiles !== false && options.maxFiles !== undefined) {
-    addPlugin(ValidatorMaxFiles({ maxFiles: options.maxFiles }))
-  }
-
-  if (options.maxFileSize !== false && options.maxFileSize !== undefined) {
-    addPlugin(ValidatorMaxFileSize({ maxFileSize: options.maxFileSize }))
-  }
-
-  if (options.allowedFileTypes !== false && options.allowedFileTypes !== undefined && options.allowedFileTypes.length > 0) {
-    addPlugin(ValidatorAllowedFileTypes({ allowedFileTypes: options.allowedFileTypes }))
   }
 
   if (options.thumbnails !== false && options.thumbnails !== undefined) {
@@ -315,9 +307,9 @@ export const useUploadKit = <TUploadResult = unknown>(
 
     if (filesToAdd.length === 0) return []
 
-    // Respect maxFiles limit
-    if (options.maxFiles !== false && options.maxFiles !== undefined) {
-      const available = options.maxFiles - files.value.length
+    // Respect maxFiles restriction
+    if (restrictions.maxFiles !== undefined && Number.isFinite(restrictions.maxFiles)) {
+      const available = restrictions.maxFiles - files.value.length
       if (available <= 0) return []
       filesToAdd = filesToAdd.slice(0, available)
     }
@@ -350,6 +342,18 @@ export const useUploadKit = <TUploadResult = unknown>(
     }
 
     try {
+      const violation = applyRestrictions(
+        { name: file.name, size: file.size, type: file.type },
+        {
+          existingCount: files.value.length,
+          existingTotalSize: files.value.reduce((sum, f) => sum + f.size, 0),
+        },
+        restrictions,
+      )
+      if (violation) {
+        throw { message: violation.message, details: { code: violation.code, ...violation.meta } }
+      }
+
       const validatedFile = await runPluginStage("validate", uploadFile)
       if (!validatedFile) {
         throw new Error(`File validation failed for ${file.name}`)
@@ -377,10 +381,19 @@ export const useUploadKit = <TUploadResult = unknown>(
   }
 
   const addFiles = async (newFiles: File[]) => {
-    const results = await Promise.allSettled(newFiles.map((file) => addFile(file)))
-    const addedFiles = results
-      .filter((r): r is PromiseFulfilledResult<UploadFile<TUploadResult>> => r.status === "fulfilled")
-      .map((r) => r.value)
+    // Serialize so each addFile sees the up-to-date `files.value` snapshot for
+    // restriction checks (maxFiles, maxTotalSize). Running in parallel via
+    // Promise.allSettled lets multiple files pass aggregate checks against the
+    // same pre-insertion snapshot, then all get inserted, blowing through limits.
+    const addedFiles: UploadFile<TUploadResult>[] = []
+    for (const file of newFiles) {
+      try {
+        const added = await addFile(file)
+        addedFiles.push(added)
+      } catch {
+        // addFile already records error state and emits file:error
+      }
+    }
     return addedFiles
   }
 

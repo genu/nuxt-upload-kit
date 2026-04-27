@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createError } from "h3"
 import type { StorageAdapter, UploadServerConfig } from "../../../src/runtime/server/types"
 
@@ -48,8 +48,13 @@ beforeEach(() => {
   vi.doUnmock("h3")
 })
 
+afterEach(async () => {
+  const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+  __setRuntimeConfig({})
+})
+
 describe("direct handler", () => {
-  it("authorizes, validates, puts, then runs afterUpload", async () => {
+  it("authorizes, puts, then runs afterUpload", async () => {
     const order: string[] = []
     const storage = stubStorage()
     storage.put.mockImplementation(async (input) => {
@@ -62,11 +67,6 @@ describe("direct handler", () => {
         order.push("authorize")
         return { userId: "u1" }
       }),
-      validators: [
-        () => {
-          order.push("validate")
-        },
-      ],
       hooks: {
         afterUpload: vi.fn(async () => {
           order.push("afterUpload")
@@ -79,7 +79,7 @@ describe("direct handler", () => {
     const handler = await callHandler()
     const result = await handler(fakeEvent())
 
-    expect(order).toEqual(["authorize", "validate", "put", "afterUpload"])
+    expect(order).toEqual(["authorize", "put", "afterUpload"])
     expect(storage.resolveKey).toHaveBeenCalled()
     expect(storage.put).toHaveBeenCalledWith(
       expect.objectContaining({ body: expect.any(Buffer), contentType: "image/png", key: expect.stringMatching(/^uploads\//) }),
@@ -97,12 +97,25 @@ describe("direct handler", () => {
       storage,
       validators: [
         () => {
-          throw createError({ statusCode: 413, message: "too big" })
+          throw createError({ statusCode: 409, message: "quota exceeded" })
         },
       ],
     }
 
-    mockMultipart([{ name: "file", filename: "big.bin", type: "application/octet-stream", data: Buffer.from("x") }])
+    mockMultipart([{ name: "file", filename: "a.bin", type: "application/octet-stream", data: Buffer.from("x") }])
+    const handler = await callHandler()
+    await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 409 })
+    expect(storage.put).not.toHaveBeenCalled()
+  })
+
+  it("rejects with 413 when file exceeds shared maxFileSize restriction", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFileSize: 1 } } })
+
+    mockMultipart([{ name: "file", filename: "big.bin", type: "application/octet-stream", data: Buffer.from("xxxx") }])
     const handler = await callHandler()
     await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 413 })
     expect(storage.put).not.toHaveBeenCalled()

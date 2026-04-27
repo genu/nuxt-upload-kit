@@ -50,7 +50,7 @@ describe("events", () => {
     })
 
     it("should not emit file:added if validation fails", async () => {
-      const uploader = useUploadKit({ maxFileSize: 100 })
+      const uploader = useUploadKit({ restrictions: { maxFileSize: 100 } })
       const handler = vi.fn()
       const errorHandler = vi.fn()
 
@@ -147,7 +147,7 @@ describe("events", () => {
 
   describe("file:error event", () => {
     it("should emit when validation fails", async () => {
-      const uploader = useUploadKit({ maxFileSize: 100 })
+      const uploader = useUploadKit({ restrictions: { maxFileSize: 100 } })
       const handler = vi.fn()
 
       uploader.on("file:error", handler)
@@ -696,7 +696,7 @@ describe("events", () => {
     })
 
     it("file:error payload should contain file and error", async () => {
-      const uploader = useUploadKit({ maxFileSize: 100 })
+      const uploader = useUploadKit({ restrictions: { maxFileSize: 100 } })
 
       uploader.on("file:error", (payload) => {
         expect(payload).toHaveProperty("file")
