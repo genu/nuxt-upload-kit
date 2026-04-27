@@ -37,6 +37,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  vi.doUnmock("h3")
   const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
   __setRuntimeConfig({})
 })
@@ -71,7 +72,6 @@ describe("presign handler", () => {
     await handler(fakeEvent({ file: { name: "a.png", size: 100, mimeType: "image/png" } }))
 
     expect(order).toEqual(["authorize", "beforePresign", "presign"])
-    vi.doUnmock("h3")
   })
 
   it("rejects with 413 when file exceeds shared maxFileSize restriction", async () => {
@@ -89,7 +89,6 @@ describe("presign handler", () => {
     const handler = await callHandler()
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 413 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
-    vi.doUnmock("h3")
   })
 
   it("runs validators after authorize and before hooks.beforePresign", async () => {
@@ -126,7 +125,6 @@ describe("presign handler", () => {
     await handler(fakeEvent({}))
 
     expect(order).toEqual(["authorize", "validate", "beforePresign", "presign"])
-    vi.doUnmock("h3")
   })
 
   it("propagates validator errors before presigning", async () => {
@@ -148,7 +146,6 @@ describe("presign handler", () => {
     const handler = await callHandler()
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 409 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
-    vi.doUnmock("h3")
   })
 
   it("rejects with 415 when MIME is not allowed", async () => {
@@ -166,7 +163,6 @@ describe("presign handler", () => {
     const handler = await callHandler()
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 415 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
-    vi.doUnmock("h3")
   })
 
   it("propagates authorize errors before presigning", async () => {
@@ -186,7 +182,6 @@ describe("presign handler", () => {
     const handler = await callHandler()
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 401 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
-    vi.doUnmock("h3")
   })
 
   it("rejects malformed bodies with 400", async () => {
@@ -199,6 +194,5 @@ describe("presign handler", () => {
 
     const handler = await callHandler()
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 400 })
-    vi.doUnmock("h3")
   })
 })
