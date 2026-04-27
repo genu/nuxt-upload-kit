@@ -3,7 +3,7 @@ import type { Rule } from "../types"
 export const maxFileSizeRule =
   (maxBytes: number | undefined): Rule =>
   (file) => {
-    if (maxBytes === undefined || maxBytes === Infinity) return null
+    if (maxBytes === undefined || !Number.isFinite(maxBytes)) return null
     if (file.size <= maxBytes) return null
     return {
       code: "max-file-size",

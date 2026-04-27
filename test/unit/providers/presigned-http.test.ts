@@ -3,6 +3,7 @@ import { PluginPresignedHttp } from "../../../src/runtime/composables/useUploadK
 
 describe("PluginPresignedHttp", () => {
   const originalFetch = globalThis.fetch
+  const originalXMLHttpRequest = globalThis.XMLHttpRequest
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -11,6 +12,7 @@ describe("PluginPresignedHttp", () => {
   afterEach(() => {
     vi.useRealTimers()
     globalThis.fetch = originalFetch
+    globalThis.XMLHttpRequest = originalXMLHttpRequest
   })
 
   it("retries /presign on 5xx and eventually surfaces the error", async () => {

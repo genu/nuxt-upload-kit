@@ -3,7 +3,7 @@ import type { Rule } from "../types"
 export const minFileSizeRule =
   (minBytes: number | undefined): Rule =>
   (file) => {
-    if (minBytes === undefined || minBytes <= 0) return null
+    if (minBytes === undefined || !Number.isFinite(minBytes) || minBytes <= 0) return null
     if (file.size >= minBytes) return null
     return {
       code: "min-file-size",

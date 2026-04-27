@@ -308,7 +308,7 @@ export const useUploadKit = <TUploadResult = unknown>(
     if (filesToAdd.length === 0) return []
 
     // Respect maxFiles restriction
-    if (restrictions.maxFiles !== undefined && restrictions.maxFiles !== Infinity) {
+    if (restrictions.maxFiles !== undefined && Number.isFinite(restrictions.maxFiles)) {
       const available = restrictions.maxFiles - files.value.length
       if (available <= 0) return []
       filesToAdd = filesToAdd.slice(0, available)
@@ -381,10 +381,19 @@ export const useUploadKit = <TUploadResult = unknown>(
   }
 
   const addFiles = async (newFiles: File[]) => {
-    const results = await Promise.allSettled(newFiles.map((file) => addFile(file)))
-    const addedFiles = results
-      .filter((r): r is PromiseFulfilledResult<UploadFile<TUploadResult>> => r.status === "fulfilled")
-      .map((r) => r.value)
+    // Serialize so each addFile sees the up-to-date `files.value` snapshot for
+    // restriction checks (maxFiles, maxTotalSize). Running in parallel via
+    // Promise.allSettled lets multiple files pass aggregate checks against the
+    // same pre-insertion snapshot, then all get inserted, blowing through limits.
+    const addedFiles: UploadFile<TUploadResult>[] = []
+    for (const file of newFiles) {
+      try {
+        const added = await addFile(file)
+        addedFiles.push(added)
+      } catch {
+        // addFile already records error state and emits file:error
+      }
+    }
     return addedFiles
   }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createError } from "h3"
 import type { StorageAdapter, UploadServerConfig } from "../../../src/runtime/server/types"
 
@@ -34,6 +34,11 @@ const fakeEvent = (body: unknown) =>
 
 beforeEach(() => {
   vi.resetModules()
+})
+
+afterEach(async () => {
+  const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+  __setRuntimeConfig({})
 })
 
 describe("presign handler", () => {
@@ -85,7 +90,6 @@ describe("presign handler", () => {
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 413 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
     vi.doUnmock("h3")
-    __setRuntimeConfig({})
   })
 
   it("runs validators after authorize and before hooks.beforePresign", async () => {
@@ -163,7 +167,6 @@ describe("presign handler", () => {
     await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 415 })
     expect(storage.presignUpload).not.toHaveBeenCalled()
     vi.doUnmock("h3")
-    __setRuntimeConfig({})
   })
 
   it("propagates authorize errors before presigning", async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { createError } from "h3"
 import type { StorageAdapter, UploadServerConfig } from "../../../src/runtime/server/types"
 
@@ -46,6 +46,11 @@ const mockMultipart = (parts: Array<{ name: string; filename?: string; type?: st
 beforeEach(() => {
   vi.resetModules()
   vi.doUnmock("h3")
+})
+
+afterEach(async () => {
+  const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+  __setRuntimeConfig({})
 })
 
 describe("direct handler", () => {
@@ -114,7 +119,6 @@ describe("direct handler", () => {
     const handler = await callHandler()
     await expect(handler(fakeEvent())).rejects.toMatchObject({ statusCode: 413 })
     expect(storage.put).not.toHaveBeenCalled()
-    __setRuntimeConfig({})
   })
 
   it("propagates authorize errors before putting", async () => {
