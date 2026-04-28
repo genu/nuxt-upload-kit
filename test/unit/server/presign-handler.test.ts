@@ -184,6 +184,99 @@ describe("presign handler", () => {
     expect(storage.presignUpload).not.toHaveBeenCalled()
   })
 
+  it("enforces maxFiles using getExistingState (409)", async () => {
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: async () => ({ userId: "u1" }),
+      getExistingState: async () => ({ count: 10, totalSize: 0 }),
+    }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFiles: 10 } } })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 100, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 409 })
+    expect(storage.presignUpload).not.toHaveBeenCalled()
+  })
+
+  it("enforces maxTotalSize using getExistingState (413)", async () => {
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: async () => ({ userId: "u1" }),
+      getExistingState: async () => ({ count: 0, totalSize: 900 }),
+    }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxTotalSize: 1000 } } })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 200, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    await expect(handler(fakeEvent({}))).rejects.toMatchObject({ statusCode: 413 })
+    expect(storage.presignUpload).not.toHaveBeenCalled()
+  })
+
+  it("skips aggregate rules when getExistingState is not provided", async () => {
+    const storage = stubStorage()
+    userConfig = { storage }
+
+    const { __setRuntimeConfig } = await import("../../fixtures/nuxt-imports")
+    __setRuntimeConfig({ uploadKit: { restrictions: { maxFiles: 1, maxTotalSize: 10 } } })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 100, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    const result = await handler(fakeEvent({}))
+    expect(result).toMatchObject({ uploadUrl: expect.any(String) })
+  })
+
+  it("calls getExistingState after authorize, before validators", async () => {
+    const order: string[] = []
+    const storage = stubStorage()
+    userConfig = {
+      storage,
+      authorize: async () => {
+        order.push("authorize")
+        return { userId: "u1" }
+      },
+      getExistingState: async () => {
+        order.push("getExistingState")
+        return { count: 0, totalSize: 0 }
+      },
+      validators: [
+        () => {
+          order.push("validate")
+        },
+      ],
+    }
+    storage.presignUpload.mockImplementation(async (input) => {
+      order.push("presign")
+      return { uploadUrl: "u", publicUrl: "p", fileId: input.fileId }
+    })
+
+    vi.doMock("h3", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("h3")>()
+      return { ...actual, readBody: async () => ({ file: { name: "a.png", size: 1, mimeType: "image/png" } }) }
+    })
+
+    const handler = await callHandler()
+    await handler(fakeEvent({}))
+    expect(order).toEqual(["authorize", "getExistingState", "validate", "presign"])
+  })
+
   it("rejects malformed bodies with 400", async () => {
     userConfig = { storage: stubStorage() }
 

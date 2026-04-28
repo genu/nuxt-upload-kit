@@ -35,10 +35,11 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  enforceRestrictions(file, getRestrictions())
-
   const auth = config.authorize ? await config.authorize(event, { type: "presign-upload", file }) : {}
   const ctx: ServerHookContext = { event, auth }
+
+  const state = config.getExistingState ? await config.getExistingState(ctx) : undefined
+  enforceRestrictions(file, getRestrictions(), state)
 
   if (config.validators) {
     for (const validate of config.validators) await validate(file, ctx)

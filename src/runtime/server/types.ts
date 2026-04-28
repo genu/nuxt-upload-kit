@@ -72,6 +72,15 @@ export interface StorageAdapter {
  */
 export type ServerValidator = (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
 
+/**
+ * Existing per-user upload state used to enforce aggregate restrictions
+ * (`maxFiles`, `maxTotalSize`) on the server. Returned by `getExistingState`.
+ */
+export interface ExistingUploadState {
+  count: number
+  totalSize: number
+}
+
 export interface UploadServerConfig {
   storage?: StorageAdapter
   authorize?: (event: H3Event, op: AuthorizeOp) => AuthorizeContext | Promise<AuthorizeContext>
@@ -93,6 +102,16 @@ export interface UploadServerConfig {
    * proxy/CDN request-size cap for chunked transfer encoding, which has no Content-Length.
    */
   maxBodySize?: number
+  /**
+   * Resolve the caller's existing upload state (count + total size) so the server
+   * can enforce aggregate restrictions (`maxFiles`, `maxTotalSize`) statefully.
+   * Runs after `authorize`, so `ctx.auth` is available for scoping the lookup
+   * (typically a DB query keyed by `ctx.auth.userId`).
+   *
+   * Without this hook the server only enforces per-file rules; aggregate rules
+   * remain client-side UX and can be bypassed by a hostile client.
+   */
+  getExistingState?: (ctx: ServerHookContext) => ExistingUploadState | Promise<ExistingUploadState>
   hooks?: {
     beforePresign?: (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
     afterUpload?: (file: UploadFileDescriptor, ctx: ServerHookContext) => void | Promise<void>
