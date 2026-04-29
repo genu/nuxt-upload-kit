@@ -1,6 +1,38 @@
 # Changelog
 
 
+## [0.2.0](https://github.com/genu/nuxt-upload-kit/compare/v0.1.27...v0.2.0) (2026-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* unify client/server validation via shared restrictions core ([#212](https://github.com/genu/nuxt-upload-kit/issues/212))
+* rename initialize/appendExistingFiles to set/addExistingFiles ([#163](https://github.com/genu/nuxt-upload-kit/issues/163))
+
+### Features
+
+* server-side enforcement of aggregate restrictions ([#203](https://github.com/genu/nuxt-upload-kit/issues/203)) ([#213](https://github.com/genu/nuxt-upload-kit/issues/213)) ([5e8bf9a](https://github.com/genu/nuxt-upload-kit/commit/5e8bf9a6fd08f5c46397ec1dedfa2b46b47e8c3b))
+* **useUploadKit:** return `ready` promise alongside `isReady` ref (closes [#156](https://github.com/genu/nuxt-upload-kit/issues/156)) ([#166](https://github.com/genu/nuxt-upload-kit/issues/166)) ([c3536a1](https://github.com/genu/nuxt-upload-kit/commit/c3536a1a5390514f602a075c4d36ed10116e3037))
+* **v0.2:** Azure Blob storage server adapter ([#197](https://github.com/genu/nuxt-upload-kit/issues/197)) ([ebfc5ed](https://github.com/genu/nuxt-upload-kit/commit/ebfc5eda3592816e8237f082ba64374111fc9aef))
+* **v0.2:** direct upload endpoint and server mode ([#194](https://github.com/genu/nuxt-upload-kit/issues/194)) ([c2c3d3f](https://github.com/genu/nuxt-upload-kit/commit/c2c3d3ffb925b0ed730ac3cbef00bf7a7ae5c640))
+* **v0.2:** download and delete endpoints ([#185](https://github.com/genu/nuxt-upload-kit/issues/185)) ([#193](https://github.com/genu/nuxt-upload-kit/issues/193)) ([6b85cb6](https://github.com/genu/nuxt-upload-kit/commit/6b85cb6e058eb0818d41890b10e417109fb39508))
+* **v0.2:** Firebase storage server adapter ([#199](https://github.com/genu/nuxt-upload-kit/issues/199)) ([2d28eb0](https://github.com/genu/nuxt-upload-kit/commit/2d28eb04aa5be6b399ceb3c50a29ccb33dc03590))
+* **v0.2:** maxBodySize cap on direct upload endpoint ([#200](https://github.com/genu/nuxt-upload-kit/issues/200)) ([7d8a2ff](https://github.com/genu/nuxt-upload-kit/commit/7d8a2ff615b40fac5167294be2ca680617ffd7fc))
+* **v0.2:** S3 server adapter + /presign endpoint ([#183](https://github.com/genu/nuxt-upload-kit/issues/183)) ([#192](https://github.com/genu/nuxt-upload-kit/issues/192)) ([c8190a0](https://github.com/genu/nuxt-upload-kit/commit/c8190a06dfd1f26bde556a34a541defff8cb092e))
+* **v0.2:** scaffold module server half ([#189](https://github.com/genu/nuxt-upload-kit/issues/189)) ([baa9bb6](https://github.com/genu/nuxt-upload-kit/commit/baa9bb6d9ef379ceead147157ef0c55afe773f02))
+
+
+### Bug Fixes
+
+* **docs:** fix Vercel deploy by removing conflicting config ([#148](https://github.com/genu/nuxt-upload-kit/issues/148)) ([dd9ff9d](https://github.com/genu/nuxt-upload-kit/commit/dd9ff9daab9228f4aa1c8068b649b86706141cb7))
+* **useUploadKit:** prevent duplicate storage uploads on concurrent upload() calls (closes [#169](https://github.com/genu/nuxt-upload-kit/issues/169)) ([#170](https://github.com/genu/nuxt-upload-kit/issues/170)) ([bea55e0](https://github.com/genu/nuxt-upload-kit/commit/bea55e0b31a4fcc49ba43ed5d2a5574e88ab08c7))
+
+
+### Code Refactoring
+
+* rename initialize/appendExistingFiles to set/addExistingFiles ([#163](https://github.com/genu/nuxt-upload-kit/issues/163)) ([1e8a708](https://github.com/genu/nuxt-upload-kit/commit/1e8a708d23a4ec69344a90b64befb15477223d91))
+* unify client/server validation via shared restrictions core ([#212](https://github.com/genu/nuxt-upload-kit/issues/212)) ([2062a54](https://github.com/genu/nuxt-upload-kit/commit/2062a5483d0f414966ceb6f1205054a205112924))
+
 ## [0.1.27](https://github.com/genu/nuxt-upload-kit/compare/v0.1.26...v0.1.27) (2026-02-23)
 
 
