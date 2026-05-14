@@ -89,7 +89,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.5",
     "firebase": "12.13.0",
-    "firebase-admin": "13.9.0",
+    "firebase-admin": "13.10.0",
     "h3": "1.15.11",
     "happy-dom": "20.9.0",
     "nuxt": "4.4.2",
