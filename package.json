@@ -98,7 +98,7 @@
     "unbuild": "3.6.1",
     "vitest": "4.1.8",
     "vue": "3.5.38",
-    "vue-tsc": "3.3.4"
+    "vue-tsc": "3.3.5"
   },
   "peerDependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
