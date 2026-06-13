@@ -91,7 +91,7 @@
     "firebase": "12.14.0",
     "firebase-admin": "13.10.0",
     "h3": "1.15.11",
-    "happy-dom": "20.10.2",
+    "happy-dom": "20.10.3",
     "nuxt": "4.4.2",
     "prettier": "3.8.4",
     "typescript": "6.0.3",
