@@ -13,11 +13,11 @@ importers:
         version: 3.0.1
     devDependencies:
       '@aws-sdk/client-s3':
-        specifier: 3.1074.0
-        version: 3.1074.0
+        specifier: 3.1075.0
+        version: 3.1075.0
       '@aws-sdk/lib-storage':
         specifier: 3.1074.0
-        version: 3.1074.0(@aws-sdk/client-s3@3.1074.0)
+        version: 3.1074.0(@aws-sdk/client-s3@3.1075.0)
       '@aws-sdk/s3-request-presigner':
         specifier: 3.1074.0
         version: 3.1074.0
@@ -195,8 +195,8 @@ packages:
     resolution: {integrity: sha512-v0U9S7gBIme3OTgt1LdbAF4RpvavCc+4GK1+1xqAcqtbrHsEhjQo6R45LKcjhs/+WrRJij1Y0Gztw7QPAIeUfA==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1074.0':
-    resolution: {integrity: sha512-NxC62ifhtaDDdJjZ8f8Y49DCOpviGGSwzdE4KO/DA1vui4dJP4CAq+64HQkdAjFw64i5cVZb5mF6off+pZX/pg==}
+  '@aws-sdk/client-s3@3.1075.0':
+    resolution: {integrity: sha512-h1A6nIl1YX6Y45enGsTK7ef3ZrOnBiQJ1qF5R2K/nMWfsu6A9mc2Y5T66nxerABzyjjyyvign3MrzafnFoQKmA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.974.23':
@@ -9048,7 +9048,7 @@ snapshots:
       '@smithy/types': 4.14.3
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1074.0':
+  '@aws-sdk/client-s3@3.1075.0':
     dependencies:
       '@aws-crypto/sha1-browser': 5.2.0
       '@aws-crypto/sha256-browser': 5.2.0
@@ -9160,9 +9160,9 @@ snapshots:
       '@smithy/types': 4.14.3
       tslib: 2.8.1
 
-  '@aws-sdk/lib-storage@3.1074.0(@aws-sdk/client-s3@3.1074.0)':
+  '@aws-sdk/lib-storage@3.1074.0(@aws-sdk/client-s3@3.1075.0)':
     dependencies:
-      '@aws-sdk/client-s3': 3.1074.0
+      '@aws-sdk/client-s3': 3.1075.0
       '@smithy/core': 3.24.6
       '@smithy/types': 4.14.3
       buffer: 5.6.0
