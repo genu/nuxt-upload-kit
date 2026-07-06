@@ -84,7 +84,7 @@
     "@nuxt/test-utils": "4.0.3",
     "@types/node": "latest",
     "@vitejs/plugin-vue": "6.0.7",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.6",
@@ -96,7 +96,7 @@
     "prettier": "3.9.4",
     "typescript": "6.0.3",
     "unbuild": "3.6.1",
-    "vitest": "4.1.9",
+    "vitest": "4.1.10",
     "vue": "3.5.39",
     "vue-tsc": "3.3.6"
   },
