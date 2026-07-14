@@ -83,7 +83,7 @@
     "@nuxt/schema": "4.4.2",
     "@nuxt/test-utils": "4.0.3",
     "@types/node": "latest",
-    "@vitejs/plugin-vue": "6.0.7",
+    "@vitejs/plugin-vue": "6.0.8",
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.7.0",
     "eslint-config-prettier": "10.1.8",
