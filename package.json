@@ -69,8 +69,8 @@
     "mitt": "3.0.1"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "3.1087.0",
-    "@aws-sdk/lib-storage": "3.1087.0",
+    "@aws-sdk/client-s3": "3.1088.0",
+    "@aws-sdk/lib-storage": "3.1088.0",
     "@aws-sdk/s3-request-presigner": "3.1087.0",
     "@azure/storage-blob": "12.33.0",
     "@azure/storage-file-datalake": "12.31.0",
