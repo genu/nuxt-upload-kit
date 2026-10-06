@@ -171,7 +171,7 @@ uploader.onUpload(async (file, onProgress) => {
 ```
 
 #links
-:u-button{icon="i-lucide-book-open" size="xl" to="/usage/use-upload-kit" label="Read the docs"}
+:u-button{icon="i-lucide-book-open" size="xl" to="/usage/overview" label="Read the docs"}
 ::
 
 ::u-page-section{.bg-gradient-to-b .from-elevated/50 .to-transparent}
