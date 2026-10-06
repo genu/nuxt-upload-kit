@@ -1,5 +1,5 @@
 {
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install && pnpm -w exec nuxt-module-build prepare",
   "framework": null
 }
